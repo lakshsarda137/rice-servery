@@ -528,10 +528,12 @@ async def search(search_request: SearchRequest):
 
 if __name__ == '__main__':
     import uvicorn
-    PORT = 5001  # Changed from 5000 (used by macOS ControlCenter)
+    import os
+    PORT = int(os.environ.get("PORT", 5001))  # Use PORT env var for Fly.io, default to 5001 for local
     print("Starting Servery Finder Web App...")
     print(f"Open http://localhost:{PORT} in your browser")
     print(f"API docs available at http://localhost:{PORT}/docs")
     # Use import string format to enable reload mode
-    uvicorn.run("servery_finder_web:app", host="0.0.0.0", port=PORT, reload=True)
+    reload = os.environ.get("ENV") != "production"  # Only reload in development
+    uvicorn.run("servery_finder_web:app", host="0.0.0.0", port=PORT, reload=reload)
 
