@@ -301,6 +301,18 @@
             letter-spacing: 0.05em;
         }
 
+        .menu-items-list {
+            list-style: none;
+            margin: 4px 0 0;
+            padding: 0;
+        }
+
+        .menu-items-list-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .menu-item-icons {
             display: flex;
             gap: 6px;
@@ -411,6 +423,117 @@
             height: 10px;
             border-radius: 999px;
             display: inline-block;
+        }
+
+        /* --- Mobile tweaks --- */
+        @media (max-width: 640px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                margin: 12px auto 24px;
+                border-radius: 14px;
+            }
+
+            .header {
+                padding: 28px 18px;
+            }
+
+            .header h1 {
+                font-size: 1.6rem;
+            }
+
+            .header p {
+                font-size: 0.9rem;
+            }
+
+            .filters {
+                padding: 18px 18px 22px;
+            }
+
+            .results {
+                padding: 18px 14px 24px;
+            }
+
+            .filter-group {
+                margin-bottom: 20px;
+            }
+
+            .filter-input {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .cuisine-chips {
+                gap: 6px;
+            }
+
+            .cuisine-chip {
+                font-size: 0.8rem;
+                padding: 5px 10px;
+            }
+
+            .cuisine-legend {
+                font-size: 11px;
+            }
+
+            .dietary-icons {
+                gap: 8px;
+            }
+
+            .icon-option {
+                padding: 8px 10px;
+                font-size: 0.8rem;
+            }
+
+            .icon-circle {
+                width: 20px;
+                height: 20px;
+            }
+
+            select.filter-input {
+                min-height: 40px;
+            }
+
+            .search-btn {
+                font-size: 0.95rem;
+                padding: 10px 16px;
+                border-radius: 999px;
+                margin-top: 4px;
+            }
+
+            .item-group {
+                padding: 14px 12px 10px;
+            }
+
+            .item-group-title {
+                font-size: 0.85rem;
+            }
+
+            .menu-item-name {
+                font-size: 0.85rem;
+            }
+
+            /* Stack name and icons vertically on small screens so long lines don't get cramped */
+            .menu-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                padding: 12px 0;
+            }
+
+            /* Disable the desktop hover "slide" effect on mobile to avoid horizontal clipping */
+            .menu-item:hover {
+                margin: 0;
+                padding-left: 0;
+                padding-right: 0;
+                background: #f8fafc;
+            }
+
+            .menu-item-icons {
+                margin-top: 4px;
+            }
         }
     </style>
 </head>
@@ -848,14 +971,13 @@
                             });
                             
                             html += `<div class="menu-item">
-                                <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> `;
+                                <span class="menu-item-name">
+                                    <strong>${serveryName.toUpperCase()}:</strong>
+                                    <ul class="menu-items-list">`;
 
-                            // Render each item with cuisine dots (still on one line)
-                            serveryItems.forEach((i, idx) => {
-                                if (idx > 0) {
-                                    html += ', ';
-                                }
-                                html += `<span class="item-with-cuisines">`;
+                            // Render each item as its own line to avoid awkward comma wrapping on mobile
+                            serveryItems.forEach((i) => {
+                                html += `<li class="menu-items-list-item item-with-cuisines">`;
                                 // Cuisine dots
                                 if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
                                     i.matchedCuisines.forEach(c => {
@@ -866,10 +988,11 @@
                                     });
                                 }
                                 html += `<span>${i.name}</span>`;
-                                html += `</span>`;
+                                html += `</li>`;
                             });
 
-                            html += `</span>
+                            html += `</ul>
+                                </span>
                                 <div class="menu-item-icons">`;
                             
                             Array.from(allIcons).forEach(icon => {
@@ -929,29 +1052,29 @@
                     });
                     
                     html += `<div class="menu-item">
-                               <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> `;
+                               <span class="menu-item-name">
+                                   <strong>${serveryName.toUpperCase()}:</strong>
+                                   <ul class="menu-items-list">`;
 
-                           // Render each item with cuisine dots (still on one line)
-                           serveryItems.forEach((i, idx) => {
-                               if (idx > 0) {
-                                   html += ', ';
-                               }
-                               html += `<span class="item-with-cuisines">`;
+                           // Render each item as its own line to avoid awkward comma wrapping on mobile
+                           serveryItems.forEach((i) => {
+                               html += `<li class="menu-items-list-item item-with-cuisines">`;
                                // Cuisine dots
-                                if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
-                                    i.matchedCuisines.forEach(c => {
-                                        const key = (c || '').toString().toLowerCase();
-                                        const color = CUISINE_COLOR_MAP[key] || '#4b5563';
-                                        const title = c;
-                                        html += `<span class="cuisine-dot" style="background:${color}" title="${title}"></span>`;
-                                    });
-                                }
+                               if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
+                                   i.matchedCuisines.forEach(c => {
+                                       const key = (c || '').toString().toLowerCase();
+                                       const color = CUISINE_COLOR_MAP[key] || '#4b5563';
+                                       const title = c;
+                                       html += `<span class="cuisine-dot" style="background:${color}" title="${title}"></span>`;
+                                   });
+                               }
                                html += `<span>${i.name}</span>`;
-                               html += `</span>`;
+                               html += `</li>`;
                            });
 
-                           html += `</span>
-                        <div class="menu-item-icons">`;
+                           html += `</ul>
+                               </span>
+                               <div class="menu-item-icons">`;
                     
                     Array.from(allIcons).forEach(icon => {
                         const iconClass = icon.toLowerCase().replace(' ', '-');
