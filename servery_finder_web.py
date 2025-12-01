@@ -408,9 +408,13 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                     item_name = item_data['name']
                     
                     # Check item filter (specific item search) - if provided, MUST match
+                    # Use strict matching for item searches
                     item_match = True
                     if item_filter:
-                        item_match = fuzzy_match(item_filter, item_name, threshold=0.6)
+                        item_filter_lower = item_filter.lower().strip()
+                        item_name_lower = item_name.lower()
+                        # Require exact substring match for item searches (no fuzzy matching)
+                        item_match = item_filter_lower in item_name_lower
                         if not item_match:
                             continue  # Skip this item if it doesn't match the item filter
                     
