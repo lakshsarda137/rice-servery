@@ -502,12 +502,19 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                     
                     # All filters passed, add this item
                     if item_match and cuisine_match and dietary_match:
+                        # Track which cuisines this item matched (for coloring in UI)
+                        matched_cuisines = []
+                        for cuisine in cuisine_list or []:
+                            if matches_cuisine(item_name, cuisine):
+                                matched_cuisines.append(cuisine)
+
                         matching_items.append({
                             'name': item_name,
                             'icons': item_data['icons'],
                             'day': day,
                             'meal': meal_type,
-                            'servery': servery_name
+                            'servery': servery_name,
+                            'matched_cuisines': matched_cuisines
                         })
         
         if matching_items:

@@ -153,6 +153,19 @@
             box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
         }
 
+        .item-with-cuisines {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cuisine-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
         .icon-circle {
             width: 22px;
             height: 22px;
@@ -351,11 +364,10 @@
             align-items: center;
             gap: 6px;
             padding: 6px 12px;
-            background: #1e293b;
-            color: white;
-            border-radius: 6px;
+            border-radius: 999px;
             font-size: 0.875rem;
             font-weight: 500;
+            color: #ffffff;
         }
 
         .cuisine-chip-remove {
@@ -368,6 +380,37 @@
 
         .cuisine-chip-remove:hover {
             opacity: 1;
+        }
+
+        .cuisine-legend {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #64748b;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .cuisine-legend-label {
+            font-weight: 500;
+            margin-right: 4px;
+        }
+
+        .cuisine-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: #f8fafc;
+        }
+
+        .cuisine-dot-legend {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
         }
     </style>
 </head>
@@ -386,6 +429,7 @@
                     <div id="cuisine-suggestions" class="cuisine-suggestions" style="display: none;"></div>
                 </div>
                 <div id="cuisine-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                <div id="cuisine-legend" class="cuisine-legend"></div>
             </div>
 
             <div class="filter-group">
@@ -497,6 +541,20 @@
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
 
+        const CUISINE_COLOR_MAP = {
+            indian: '#f97316',
+            mexican: '#0ea5e9',
+            italian: '#ef4444',
+            chinese: '#8b5cf6',
+            japanese: '#22c55e',
+            thai: '#eab308',
+            mediterranean: '#14b8a6',
+            american: '#6b7280',
+            asian: '#3b82f6',
+            french: '#e11d48',
+            bbq: '#b45309'
+        };
+
         // Handle dietary mode toggle (AND / OR)
         const dietaryModeAndBtn = document.getElementById('dietary-mode-and');
         const dietaryModeOrBtn = document.getElementById('dietary-mode-or');
@@ -534,6 +592,7 @@
         const cuisineInput = document.getElementById('cuisine');
         const cuisineSuggestions = document.getElementById('cuisine-suggestions');
         const cuisineChips = document.getElementById('cuisine-chips');
+        const cuisineLegend = document.getElementById('cuisine-legend');
         let selectedSuggestionIndex = -1;
 
         cuisineInput.addEventListener('input', function() {
@@ -614,15 +673,33 @@
         function renderCuisineChips() {
             if (selectedCuisines.length === 0) {
                 cuisineChips.innerHTML = '';
+                cuisineLegend.innerHTML = '';
                 return;
             }
 
-            cuisineChips.innerHTML = selectedCuisines.map(cuisine => 
-                `<div class="cuisine-chip">
+            // Render chips with cuisine colors
+            cuisineChips.innerHTML = selectedCuisines.map(cuisine => {
+                const key = cuisine.toLowerCase();
+                const color = CUISINE_COLOR_MAP[key] || '#1e293b';
+                return `<div class="cuisine-chip" style="background:${color};">
                     ${cuisine}
                     <span class="cuisine-chip-remove" onclick="removeCuisine('${cuisine}')">×</span>
-                </div>`
-            ).join('');
+                </div>`;
+            }).join('');
+
+            // Render legend only for selected cuisines
+            const legendItems = selectedCuisines.map(cuisine => {
+                const key = cuisine.toLowerCase();
+                const color = CUISINE_COLOR_MAP[key] || '#1e293b';
+                return `<span class="cuisine-legend-item">
+                    <span class="cuisine-dot-legend" style="background:${color}"></span>
+                    <span>${cuisine}</span>
+                </span>`;
+            }).join('');
+
+            cuisineLegend.innerHTML = legendItems
+                ? `<span class="cuisine-legend-label">Cuisine colors:</span>${legendItems}`
+                : '';
         }
 
         // Close suggestions when clicking outside
@@ -730,6 +807,7 @@
                         allItems.push({
                             name: item.name,
                             icons: item.icons || [],
+                            matchedCuisines: item.matched_cuisines || [],
                             day: item.day,
                             meal: item.meal,
                             servery: serveryName
@@ -764,14 +842,34 @@
                     if (currentLocation !== '') {
                         // Display all items from previous time slot, grouped by servery
                         for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
-                            const itemNames = serveryItems.map(i => i.name).join(', ');
                             const allIcons = new Set();
                             serveryItems.forEach(i => {
                                 i.icons.forEach(icon => allIcons.add(icon));
                             });
                             
                             html += `<div class="menu-item">
-                                <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> ${itemNames}</span>
+                                <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> `;
+
+                            // Render each item with cuisine dots (still on one line)
+                            serveryItems.forEach((i, idx) => {
+                                if (idx > 0) {
+                                    html += ', ';
+                                }
+                                html += `<span class="item-with-cuisines">`;
+                                // Cuisine dots
+                                if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
+                                    i.matchedCuisines.forEach(c => {
+                                        const key = (c || '').toString().toLowerCase();
+                                        const color = CUISINE_COLOR_MAP[key] || '#4b5563';
+                                        const title = c;
+                                        html += `<span class="cuisine-dot" style="background:${color}" title="${title}"></span>`;
+                                    });
+                                }
+                                html += `<span>${i.name}</span>`;
+                                html += `</span>`;
+                            });
+
+                            html += `</span>
                                 <div class="menu-item-icons">`;
                             
                             Array.from(allIcons).forEach(icon => {
@@ -825,14 +923,34 @@
             // Display last time slot's items
             if (currentLocation !== '') {
                 for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
-                    const itemNames = serveryItems.map(i => i.name).join(', ');
                     const allIcons = new Set();
                     serveryItems.forEach(i => {
                         i.icons.forEach(icon => allIcons.add(icon));
                     });
                     
                     html += `<div class="menu-item">
-                        <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> ${itemNames}</span>
+                               <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> `;
+
+                           // Render each item with cuisine dots (still on one line)
+                           serveryItems.forEach((i, idx) => {
+                               if (idx > 0) {
+                                   html += ', ';
+                               }
+                               html += `<span class="item-with-cuisines">`;
+                               // Cuisine dots
+                                if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
+                                    i.matchedCuisines.forEach(c => {
+                                        const key = (c || '').toString().toLowerCase();
+                                        const color = CUISINE_COLOR_MAP[key] || '#4b5563';
+                                        const title = c;
+                                        html += `<span class="cuisine-dot" style="background:${color}" title="${title}"></span>`;
+                                    });
+                                }
+                               html += `<span>${i.name}</span>`;
+                               html += `</span>`;
+                           });
+
+                           html += `</span>
                         <div class="menu-item-icons">`;
                     
                     Array.from(allIcons).forEach(icon => {
