@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rice University Servery Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f1f5f9;
+            min-height: 100vh;
+            padding: 24px;
+            line-height: 1.6;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            padding: 48px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .filters {
+            padding: 40px;
+            background: white;
+        }
+
+        .filter-group {
+            margin-bottom: 32px;
+        }
+
+        .filter-group:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .filter-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #2d3748;
+            font-size: 1rem;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            background: #f8f9fa;
+            color: #2d3748;
+        }
+
+        .filter-input:hover {
+            border-color: #cbd5e0;
+            background: white;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #475569;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+        }
+
+        .dietary-icons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .icon-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #f8f9fa;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #4a5568;
+            user-select: none;
+        }
+
+        .icon-option:hover {
+            border-color: #475569;
+            background: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .icon-option.selected {
+            background: #1e293b;
+            color: white;
+            border-color: #1e293b;
+            box-shadow: 0 4px 15px rgba(30, 41, 59, 0.2);
+        }
+
+        .icon-option.selected:hover {
+            background: #334155;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
+        }
+
+        .icon-circle {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: white;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .icon-vegan { background: #48bb78; }
+        .icon-vegetarian { background: #38a169; }
+        .icon-gluten { background: #718096; }
+        .icon-soy { background: #ed64a6; }
+        .icon-dairy { background: #4299e1; }
+        .icon-eggs { background: #9f7aea; }
+        .icon-fish { background: #9f7aea; }
+        .icon-shellfish { background: #38b2ac; }
+        .icon-peanuts { background: #f6ad55; }
+        .icon-tree-nuts { background: #c05621; }
+        .icon-halal { background: #e53e3e; }
+        .icon-sesame { background: #dd6b20; }
+
+        .search-btn {
+            width: 100%;
+            padding: 16px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            background: #1e293b;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 32px;
+            box-shadow: 0 4px 15px rgba(30, 41, 59, 0.2);
+        }
+
+        .search-btn:hover {
+            background: #334155;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .results {
+            padding: 40px;
+            background: #f8f9fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 80px 40px;
+            color: #718096;
+            font-size: 1rem;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 80px 40px;
+            color: #a0aec0;
+            font-size: 1rem;
+        }
+
+        .item-group {
+            margin-bottom: 28px;
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        .item-group-title {
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-bottom: 2px solid #e2e8f0;
+            text-transform: uppercase;
+        }
+
+        .item-group-content {
+            padding: 20px 24px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .menu-item:hover {
+            padding-left: 12px;
+            background: linear-gradient(to right, #f8fafc 0%, transparent 100%);
+            margin: 0 -24px;
+            padding-left: 36px;
+            padding-right: 24px;
+        }
+
+        .menu-item-name {
+            flex: 1;
+            color: #334155;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+        }
+
+        .menu-item-name strong {
+            color: #1e293b;
+            font-weight: 700;
+            margin-right: 10px;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .menu-item-icons {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            align-items: center;
+        }
+
+        .item-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+        }
+
+        .cuisine-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .cuisine-suggestion {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s ease;
+        }
+
+        .cuisine-suggestion:last-child {
+            border-bottom: none;
+        }
+
+        .cuisine-suggestion:hover {
+            background: #f8fafc;
+        }
+
+        .cuisine-suggestion.selected {
+            background: #f0f9ff;
+        }
+
+        .cuisine-chips {
+            min-height: 32px;
+        }
+
+        .cuisine-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #1e293b;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .cuisine-chip-remove {
+            cursor: pointer;
+            margin-left: 4px;
+            font-weight: 700;
+            opacity: 0.8;
+            transition: opacity 0.15s ease;
+        }
+
+        .cuisine-chip-remove:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Rice University Servery Finder</h1>
+            <p>Find the best serveries for your cuisine and dietary preferences</p>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label for="cuisine">Cuisine Preference</label>
+                <div style="position: relative;">
+                    <input type="text" id="cuisine" class="filter-input" placeholder="Type to search cuisines..." autocomplete="off">
+                    <div id="cuisine-suggestions" class="cuisine-suggestions" style="display: none;"></div>
+                </div>
+                <div id="cuisine-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+
+            <div class="filter-group">
+                <label for="item">Search Specific Item (Optional)</label>
+                <input type="text" id="item" class="filter-input" placeholder="e.g., paneer, pad thai, biryani">
+            </div>
+
+            <div class="filter-group">
+                <label>Dietary Restrictions</label>
+                <div class="dietary-icons" id="dietary-icons">
+                    <div class="icon-option" data-dietary="vegan">
+                        <div class="icon-circle icon-vegan">V</div>
+                        <span>Vegan</span>
+                    </div>
+                    <div class="icon-option" data-dietary="vegetarian">
+                        <div class="icon-circle icon-vegetarian">V</div>
+                        <span>Vegetarian</span>
+                    </div>
+                    <div class="icon-option" data-dietary="halal">
+                        <div class="icon-circle icon-halal">H</div>
+                        <span>Halal</span>
+                    </div>
+                    <div class="icon-option" data-dietary="gluten">
+                        <div class="icon-circle icon-gluten">🌾</div>
+                        <span>Gluten</span>
+                    </div>
+                    <div class="icon-option" data-dietary="soy">
+                        <div class="icon-circle icon-soy">🫘</div>
+                        <span>Soy</span>
+                    </div>
+                    <div class="icon-option" data-dietary="dairy">
+                        <div class="icon-circle icon-dairy">🥛</div>
+                        <span>Dairy</span>
+                    </div>
+                    <div class="icon-option" data-dietary="eggs">
+                        <div class="icon-circle icon-eggs">🥚</div>
+                        <span>Eggs</span>
+                    </div>
+                    <div class="icon-option" data-dietary="fish">
+                        <div class="icon-circle icon-fish">🐟</div>
+                        <span>Fish</span>
+                    </div>
+                    <div class="icon-option" data-dietary="shellfish">
+                        <div class="icon-circle icon-shellfish">🦞</div>
+                        <span>Shellfish</span>
+                    </div>
+                    <div class="icon-option" data-dietary="peanuts">
+                        <div class="icon-circle icon-peanuts">🥜</div>
+                        <span>Peanuts</span>
+                    </div>
+                    <div class="icon-option" data-dietary="tree nuts">
+                        <div class="icon-circle icon-tree-nuts">🌰</div>
+                        <span>Tree Nuts</span>
+                    </div>
+                    <div class="icon-option" data-dietary="sesame">
+                        <div class="icon-circle icon-sesame">🌾</div>
+                        <span>Sesame</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Time Filter</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <select id="day" class="filter-input">
+                            <option value="">Whole Week</option>
+                            <option value="monday">Monday</option>
+                            <option value="tuesday">Tuesday</option>
+                            <option value="wednesday">Wednesday</option>
+                            <option value="thursday">Thursday</option>
+                            <option value="friday">Friday</option>
+                            <option value="saturday">Saturday</option>
+                            <option value="sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="meal" class="filter-input">
+                            <option value="">All Meals</option>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button class="search-btn" onclick="search()">Search Serveries</button>
+        </div>
+
+        <div class="results" id="results">
+            <div class="no-results">
+                Enter your preferences above and click "Search Serveries" to find matching items
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedDietary = null;
+        let selectedCuisines = [];
+        // Get supported cuisines from backend
+        const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
+
+        // Handle dietary icon clicks
+        document.querySelectorAll('.icon-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Toggle selection
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    selectedDietary = null;
+                } else {
+                    // Deselect all others
+                    document.querySelectorAll('.icon-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedDietary = this.dataset.dietary;
+                }
+            });
+        });
+
+        // Cuisine autocomplete
+        const cuisineInput = document.getElementById('cuisine');
+        const cuisineSuggestions = document.getElementById('cuisine-suggestions');
+        const cuisineChips = document.getElementById('cuisine-chips');
+        let selectedSuggestionIndex = -1;
+
+        cuisineInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            if (query.length === 0) {
+                cuisineSuggestions.style.display = 'none';
+                return;
+            }
+
+            const matches = CUISINE_OPTIONS.filter(cuisine => 
+                cuisine.toLowerCase().includes(query) && 
+                !selectedCuisines.includes(cuisine)
+            ).slice(0, 5);
+
+            if (matches.length === 0) {
+                cuisineSuggestions.style.display = 'none';
+                return;
+            }
+
+            cuisineSuggestions.innerHTML = matches.map((cuisine, index) => 
+                `<div class="cuisine-suggestion" data-cuisine="${cuisine}" data-index="${index}">${cuisine}</div>`
+            ).join('');
+
+            cuisineSuggestions.style.display = 'block';
+            selectedSuggestionIndex = -1;
+
+            // Add click handlers
+            document.querySelectorAll('.cuisine-suggestion').forEach(suggestion => {
+                suggestion.addEventListener('click', function() {
+                    addCuisine(this.dataset.cuisine);
+                });
+            });
+        });
+
+        cuisineInput.addEventListener('keydown', function(e) {
+            const suggestions = document.querySelectorAll('.cuisine-suggestion');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
+                updateSuggestionSelection(suggestions);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+                updateSuggestionSelection(suggestions);
+            } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+                e.preventDefault();
+                addCuisine(suggestions[selectedSuggestionIndex].dataset.cuisine);
+            } else if (e.key === 'Escape') {
+                cuisineSuggestions.style.display = 'none';
+            }
+        });
+
+        function updateSuggestionSelection(suggestions) {
+            suggestions.forEach((s, i) => {
+                s.classList.toggle('selected', i === selectedSuggestionIndex);
+            });
+        }
+
+        function addCuisine(cuisine) {
+            if (!selectedCuisines.includes(cuisine)) {
+                selectedCuisines.push(cuisine);
+                renderCuisineChips();
+                cuisineInput.value = '';
+                cuisineSuggestions.style.display = 'none';
+                cuisineInput.focus();
+            }
+        }
+
+        function removeCuisine(cuisine) {
+            selectedCuisines = selectedCuisines.filter(c => c !== cuisine);
+            renderCuisineChips();
+        }
+
+        // Make removeCuisine globally accessible
+        window.removeCuisine = removeCuisine;
+
+        function renderCuisineChips() {
+            if (selectedCuisines.length === 0) {
+                cuisineChips.innerHTML = '';
+                return;
+            }
+
+            cuisineChips.innerHTML = selectedCuisines.map(cuisine => 
+                `<div class="cuisine-chip">
+                    ${cuisine}
+                    <span class="cuisine-chip-remove" onclick="removeCuisine('${cuisine}')">×</span>
+                </div>`
+            ).join('');
+        }
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!cuisineInput.contains(e.target) && !cuisineSuggestions.contains(e.target)) {
+                cuisineSuggestions.style.display = 'none';
+            }
+        });
+
+        // Allow Enter key to search
+        cuisineInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && selectedSuggestionIndex < 0) {
+                e.preventDefault();
+                search();
+            }
+        });
+
+        // Allow Enter key to search from item input
+        document.getElementById('item').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+
+        async function search() {
+            const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
+            const dietary = selectedDietary;
+            const day = document.getElementById('day').value.trim();
+            const meal = document.getElementById('meal').value.trim();
+            const item = document.getElementById('item').value.trim();
+
+            if (!cuisine && !dietary && !day && !meal && !item) {
+                alert('Please enter a cuisine preference, select a dietary restriction, search for an item, or choose a time filter');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">🔍 Searching serveries...</div>';
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        cuisine: cuisine || "",
+                        dietary: dietary || "",
+                        day: day || "",
+                        meal: meal || "",
+                        item: item || ""
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+                    resultsDiv.innerHTML = `<div class="no-results">Error: ${errorData.error || 'Request failed'}</div>`;
+                    return;
+                }
+
+                const data = await response.json().catch(error => {
+                    throw new Error('Failed to parse response');
+                });
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="no-results">${data.error}</div>`;
+                    return;
+                }
+
+                displayResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="no-results">Error: ${error.message}</div>`;
+            }
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const results = data.results || {};
+
+            if (!results || Object.keys(results).length === 0) {
+                const filters = [];
+                if (data.filters && data.filters.cuisine) filters.push(data.filters.cuisine);
+                if (data.filters && data.filters.dietary) filters.push(data.filters.dietary);
+                if (data.filters && data.filters.item) filters.push(data.filters.item);
+                if (data.filters && data.filters.day) filters.push(data.filters.day);
+                if (data.filters && data.filters.meal) filters.push(data.filters.meal);
+                const filterText = filters.length > 0 ? filters.join(' + ') : 'your criteria';
+                resultsDiv.innerHTML = `<div class="no-results">No serveries found matching: ${filterText}</div>`;
+                return;
+            }
+
+            // Day and meal order for chronological sorting
+            const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const MEAL_ORDER = ['breakfast', 'lunch', 'dinner'];
+
+            // Collect all items from all serveries with their servery info
+            const allItems = [];
+            for (const [serveryName, serveryData] of Object.entries(results)) {
+                if (!serveryData || !serveryData.items || !Array.isArray(serveryData.items)) {
+                    continue;
+                }
+                serveryData.items.forEach(item => {
+                    if (item && item.day && item.meal) {
+                        allItems.push({
+                            name: item.name,
+                            icons: item.icons || [],
+                            day: item.day,
+                            meal: item.meal,
+                            servery: serveryName
+                        });
+                    }
+                });
+            }
+
+            // Sort chronologically: Monday breakfast -> Sunday dinner
+            allItems.sort((a, b) => {
+                const dayA = DAY_ORDER.indexOf(a.day.toLowerCase());
+                const dayB = DAY_ORDER.indexOf(b.day.toLowerCase());
+                if (dayA !== dayB) {
+                    return dayA - dayB;
+                }
+                const mealA = MEAL_ORDER.indexOf(a.meal.toLowerCase());
+                const mealB = MEAL_ORDER.indexOf(b.meal.toLowerCase());
+                return mealA - mealB;
+            });
+
+            let html = '';
+            let currentLocation = '';
+            let itemsByServery = {};
+
+            // Display items in chronological order, grouping by time slot and servery
+            allItems.forEach((item, index) => {
+                const location = `${item.day.toUpperCase()} ${item.meal.toUpperCase()}`;
+                
+                // Start new time slot group if needed
+                if (location !== currentLocation) {
+                    // Close previous group if exists
+                    if (currentLocation !== '') {
+                        // Display all items from previous time slot, grouped by servery
+                        for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
+                            const itemNames = serveryItems.map(i => i.name).join(', ');
+                            const allIcons = new Set();
+                            serveryItems.forEach(i => {
+                                i.icons.forEach(icon => allIcons.add(icon));
+                            });
+                            
+                            html += `<div class="menu-item">
+                                <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> ${itemNames}</span>
+                                <div class="menu-item-icons">`;
+                            
+                            Array.from(allIcons).forEach(icon => {
+                                const iconClass = icon.toLowerCase().replace(' ', '-');
+                                html += `<div class="item-icon icon-${iconClass}" title="${icon}">`;
+                                if (icon === 'Vegan' || icon === 'Vegetarian') {
+                                    html += 'V';
+                                } else if (icon === 'Halal') {
+                                    html += 'H';
+                                } else if (icon === 'Gluten') {
+                                    html += '🌾';
+                                } else if (icon === 'Soy') {
+                                    html += '🫘';
+                                } else if (icon === 'Dairy') {
+                                    html += '🥛';
+                                } else if (icon === 'Eggs') {
+                                    html += '🥚';
+                                } else if (icon === 'Fish') {
+                                    html += '🐟';
+                                } else if (icon === 'Shellfish') {
+                                    html += '🦞';
+                                } else if (icon === 'Peanuts') {
+                                    html += '🥜';
+                                } else if (icon === 'Tree Nuts') {
+                                    html += '🌰';
+                                } else if (icon === 'Sesame') {
+                                    html += '🌾';
+                                }
+                                html += `</div>`;
+                            });
+                            
+                            html += `</div></div>`;
+                        }
+                        html += `</div></div></div>`;
+                        itemsByServery = {};
+                    }
+                    // Start new group
+                    html += `<div class="item-group">
+                        <div class="item-group-title">${location}</div>
+                        <div class="item-group-content">`;
+                    currentLocation = location;
+                }
+
+                // Group items by servery for this time slot
+                if (!itemsByServery[item.servery]) {
+                    itemsByServery[item.servery] = [];
+                }
+                itemsByServery[item.servery].push(item);
+            });
+
+            // Display last time slot's items
+            if (currentLocation !== '') {
+                for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
+                    const itemNames = serveryItems.map(i => i.name).join(', ');
+                    const allIcons = new Set();
+                    serveryItems.forEach(i => {
+                        i.icons.forEach(icon => allIcons.add(icon));
+                    });
+                    
+                    html += `<div class="menu-item">
+                        <span class="menu-item-name"><strong>${serveryName.toUpperCase()}:</strong> ${itemNames}</span>
+                        <div class="menu-item-icons">`;
+                    
+                    Array.from(allIcons).forEach(icon => {
+                        const iconClass = icon.toLowerCase().replace(' ', '-');
+                        html += `<div class="item-icon icon-${iconClass}" title="${icon}">`;
+                        if (icon === 'Vegan' || icon === 'Vegetarian') {
+                            html += 'V';
+                        } else if (icon === 'Halal') {
+                            html += 'H';
+                        } else if (icon === 'Gluten') {
+                            html += '🌾';
+                        } else if (icon === 'Soy') {
+                            html += '🫘';
+                        } else if (icon === 'Dairy') {
+                            html += '🥛';
+                        } else if (icon === 'Eggs') {
+                            html += '🥚';
+                        } else if (icon === 'Fish') {
+                            html += '🐟';
+                        } else if (icon === 'Shellfish') {
+                            html += '🦞';
+                        } else if (icon === 'Peanuts') {
+                            html += '🥜';
+                        } else if (icon === 'Tree Nuts') {
+                            html += '🌰';
+                        } else if (icon === 'Sesame') {
+                            html += '🌾';
+                        }
+                        html += `</div>`;
+                    });
+                    
+                    html += `</div></div>`;
+                }
+                html += `</div></div></div>`;
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
+
