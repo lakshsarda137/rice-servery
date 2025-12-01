@@ -629,4 +629,3 @@ if __name__ == '__main__':
     # Use import string format to enable reload mode
     reload = os.environ.get("ENV") != "production"  # Only reload in development
     uvicorn.run("servery_finder_web:app", host="0.0.0.0", port=PORT, reload=reload)
-
