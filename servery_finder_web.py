@@ -118,8 +118,15 @@ def extract_icons(icons_html):
 
 
 def fetch_menu_with_icons(servery_path):
-    """Fetch and extract weekly menu with dietary icons"""
-    url = f"https://dining.rice.edu/{servery_path}"
+    """Fetch and extract weekly menu with dietary icons.
+
+    We add a dummy query parameter to the URL to aggressively bust any upstream caches.
+    This ensures that when Rice updates the weekly menu, we always see the latest HTML
+    instead of a cached copy from a previous week.
+    """
+    import time
+    # Cache-busting query param so we don't accidentally get a stale weekly page
+    url = f"https://dining.rice.edu/{servery_path}?_ts={int(time.time())}"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
