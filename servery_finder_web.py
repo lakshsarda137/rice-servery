@@ -333,24 +333,28 @@ def fuzzy_match(query, text, threshold=0.75):
     query_lower = query.lower().strip()
     text_lower = text.lower()
     
-    # Exact match
+    # Exact match (substring)
     if query_lower in text_lower:
         return True
     
-    # Word-level matching (more lenient for item searches)
-    query_words = set(query_lower.split())
-    text_words = set(text_lower.split())
+    # Word-level matching - ALL words in query must appear in text
+    query_words = query_lower.split()
+    text_words = text_lower.split()
     
-    # Check if significant words match
     if query_words:
-        matches = sum(1 for qw in query_words if any(qw in tw or tw in qw for tw in text_words))
-        if matches / len(query_words) >= 0.5:  # At least 50% of words match
+        # Check if ALL query words appear in the text (as whole words or substrings)
+        all_words_match = all(
+            any(qw in tw or tw in qw for tw in text_words) 
+            for qw in query_words
+        )
+        if all_words_match:
             return True
     
-    # Sequence matcher for typo tolerance
-    ratio = SequenceMatcher(None, query_lower, text_lower).ratio()
-    if ratio >= threshold:
-        return True
+    # Sequence matcher for typo tolerance (only if query is short, like "naan")
+    if len(query_lower) <= 10:  # Only use fuzzy matching for short queries
+        ratio = SequenceMatcher(None, query_lower, text_lower).ratio()
+        if ratio >= threshold:
+            return True
     
     return False
 
@@ -403,21 +407,28 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                 for item_data in meals.get(meal_type, []):
                     item_name = item_data['name']
                     
-                    # Check item filter (specific item search)
+                    # Check item filter (specific item search) - if provided, MUST match
                     item_match = True
                     if item_filter:
                         item_match = fuzzy_match(item_filter, item_name, threshold=0.6)
+                        if not item_match:
+                            continue  # Skip this item if it doesn't match the item filter
                     
                     # Check cuisine filter(s) - match if item matches ANY selected cuisine
                     cuisine_match = True
                     if cuisine_list:
                         cuisine_match = any(matches_cuisine(item_name, cuisine) for cuisine in cuisine_list)
+                        if not cuisine_match:
+                            continue  # Skip if cuisine doesn't match
                     
-                    # Check dietary filter
+                    # Check dietary filter - if provided, MUST match
                     dietary_match = True
                     if dietary_filter:
                         dietary_match = matches_dietary(item_data, dietary_filter)
+                        if not dietary_match:
+                            continue  # Skip if dietary doesn't match
                     
+                    # All filters passed, add this item
                     if item_match and cuisine_match and dietary_match:
                         matching_items.append({
                             'name': item_name,
