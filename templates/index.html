@@ -100,6 +100,23 @@
             margin-top: 12px;
         }
 
+        .dietary-mode-btn {
+            border: 1px solid #cbd5e0;
+            background: #f8fafc;
+            color: #1f2933;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+        .dietary-mode-btn.active {
+            background: #1e293b;
+            color: #f9fafb;
+            border-color: #1e293b;
+        }
+
         .icon-option {
             display: inline-flex;
             align-items: center;
@@ -378,6 +395,13 @@
 
             <div class="filter-group">
                 <label>Dietary Restrictions</label>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                    <span style="font-size: 12px; color: #64748b;">If you pick more than one tag, combine using:</span>
+                    <div style="display: inline-flex; gap: 6px;">
+                        <button id="dietary-mode-and" type="button" class="dietary-mode-btn active">AND (all tags)</button>
+                        <button id="dietary-mode-or" type="button" class="dietary-mode-btn">OR (any tag)</button>
+                    </div>
+                </div>
                 <div class="dietary-icons" id="dietary-icons">
                     <div class="icon-option" data-dietary="vegan">
                         <div class="icon-circle icon-vegan">V</div>
@@ -467,23 +491,41 @@
     </div>
 
     <script>
-        let selectedDietary = null;
+        let selectedDietaries = [];
+        let dietaryMode = 'and'; // 'and' = Match ALL, 'or' = Match ANY
         let selectedCuisines = [];
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
 
-        // Handle dietary icon clicks
+        // Handle dietary mode toggle (AND / OR)
+        const dietaryModeAndBtn = document.getElementById('dietary-mode-and');
+        const dietaryModeOrBtn = document.getElementById('dietary-mode-or');
+
+        dietaryModeAndBtn.addEventListener('click', () => {
+            dietaryMode = 'and';
+            dietaryModeAndBtn.classList.add('active');
+            dietaryModeOrBtn.classList.remove('active');
+        });
+
+        dietaryModeOrBtn.addEventListener('click', () => {
+            dietaryMode = 'or';
+            dietaryModeOrBtn.classList.add('active');
+            dietaryModeAndBtn.classList.remove('active');
+        });
+
+        // Handle dietary icon clicks (allow multiple selections)
         document.querySelectorAll('.icon-option').forEach(option => {
             option.addEventListener('click', function() {
-                // Toggle selection
+                const value = this.dataset.dietary;
+                // Toggle this dietary filter on/off
                 if (this.classList.contains('selected')) {
                     this.classList.remove('selected');
-                    selectedDietary = null;
+                    selectedDietaries = selectedDietaries.filter(d => d !== value);
                 } else {
-                    // Deselect all others
-                    document.querySelectorAll('.icon-option').forEach(opt => opt.classList.remove('selected'));
                     this.classList.add('selected');
-                    selectedDietary = this.dataset.dietary;
+                    if (!selectedDietaries.includes(value)) {
+                        selectedDietaries.push(value);
+                    }
                 }
             });
         });
@@ -607,7 +649,7 @@
 
         async function search() {
             const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
-            const dietary = selectedDietary;
+            const dietary = selectedDietaries.length > 0 ? selectedDietaries.join(',') : '';
             const day = document.getElementById('day').value.trim();
             const meal = document.getElementById('meal').value.trim();
             const item = document.getElementById('item').value.trim();
@@ -629,6 +671,7 @@
                     body: JSON.stringify({
                         cuisine: cuisine || "",
                         dietary: dietary || "",
+                        dietary_mode: dietaryMode || "and",
                         day: day || "",
                         meal: meal || "",
                         item: item || ""

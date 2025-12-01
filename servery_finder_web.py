@@ -6,7 +6,8 @@ import urllib.request
 import re
 from collections import defaultdict
 from difflib import SequenceMatcher
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -75,6 +76,19 @@ SERVERIES = {
     'baker': 'baker-college-kitchen'
 }
 
+# In-memory weekly cache:
+# {
+#   "week_key": "2025-W49",
+#   "menus": {
+#       "north": { ... },  # structure returned by fetch_menu_with_icons
+#       ...
+#   }
+# }
+MENU_CACHE: Dict[str, Any] = {
+    "week_key": None,
+    "menus": {}
+}
+
 
 def extract_icons(icons_html):
     """Extract dietary icons from HTML"""
@@ -117,15 +131,21 @@ def extract_icons(icons_html):
     return icons_found
 
 
-def fetch_menu_with_icons(servery_path):
-    """Fetch and extract weekly menu with dietary icons.
+def _current_week_key() -> str:
+    """Return a key like '2025-W49' for the current ISO week (in UTC)."""
+    today = datetime.now(timezone.utc).date()
+    year, week, _ = today.isocalendar()
+    return f"{year}-W{week:02d}"
 
-    We add a dummy query parameter to the URL to aggressively bust any upstream caches.
-    This ensures that when Rice updates the weekly menu, we always see the latest HTML
-    instead of a cached copy from a previous week.
+
+def fetch_menu_with_icons(servery_path: str):
+    """Fetch and extract weekly menu with dietary icons for a single servery.
+
+    Note: we append a dummy timestamp query parameter to aggressively bust any
+    upstream caches (Rice/CDN). The in-memory weekly cache ensures we still only
+    hit Rice once per servery per ISO week from our side.
     """
     import time
-    # Cache-busting query param so we don't accidentally get a stale weekly page
     url = f"https://dining.rice.edu/{servery_path}?_ts={int(time.time())}"
     
     headers = {
@@ -208,7 +228,7 @@ def fetch_menu_with_icons(servery_path):
                 item = re.sub(r'&quot;', '"', item)
                 item = item.strip()
                 
-                if (5 < len(item) < 150 and 
+                if (3 < len(item) < 150 and 
                     not any(skip in item.lower() for skip in ['dietary', 'preference', 'view', 'filter', 'apply', 'kosher meals'])):
                     
                     # Extract icons
@@ -244,7 +264,7 @@ def fetch_menu_with_icons(servery_path):
                     item = re.sub(r'&#039;', "'", item)
                     item = item.strip()
                     
-                    if (5 < len(item) < 150 and 
+                    if (3 < len(item) < 150 and 
                         not any(skip in item.lower() for skip in ['dietary', 'preference', 'view', 'filter', 'apply', 'kosher meals'])):
                         menu[day_name][meal_name].append({
                             'name': item,
@@ -252,6 +272,36 @@ def fetch_menu_with_icons(servery_path):
                         })
     
     return dict(menu)
+
+
+def get_weekly_menu(servery_name: str, servery_path: str):
+    """
+    Return the weekly menu for a servery, using a per-week in-memory cache.
+
+    - At the start of a new ISO week (Monday), the cache key changes and we
+      automatically discard the old cached data.
+    - Within the same week, we fetch each servery from Rice once, then
+      reuse that data for all subsequent searches.
+    """
+    global MENU_CACHE
+
+    week_key = _current_week_key()
+
+    # If week changed, reset the entire cache
+    if MENU_CACHE["week_key"] != week_key:
+        MENU_CACHE = {
+            "week_key": week_key,
+            "menus": {}
+        }
+
+    # If this servery is already cached for this week, return it
+    if servery_name in MENU_CACHE["menus"]:
+        return MENU_CACHE["menus"][servery_name]
+
+    # Otherwise, fetch fresh data and cache it
+    menu = fetch_menu_with_icons(servery_path)
+    MENU_CACHE["menus"][servery_name] = menu
+    return menu
 
 
 def matches_cuisine(item_name, cuisine):
@@ -366,7 +416,7 @@ def fuzzy_match(query, text, threshold=0.75):
     return False
 
 
-def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter=None, meal_filter=None, item_filter=None):
+def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter=None, meal_filter=None, item_filter=None, dietary_mode: str = "and"):
     """Find serveries matching filters"""
     results = {}
     
@@ -379,6 +429,11 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
     if cuisine_filter:
         cuisine_list = [c.strip() for c in cuisine_filter.split(',') if c.strip()]
     
+    # Parse multiple dietary filters if comma-separated
+    dietary_list = []
+    if dietary_filter:
+        dietary_list = [d.strip() for d in dietary_filter.split(',') if d.strip()]
+
     # Determine if item_filter is a cuisine or specific item
     is_cuisine_search = False
     if item_filter and not cuisine_list and not dietary_filter:
@@ -392,7 +447,8 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                 break
     
     for servery_name, servery_path in SERVERIES.items():
-        menu = fetch_menu_with_icons(servery_path)
+        # Use weekly cache so we only hit Rice once per servery per ISO week
+        menu = get_weekly_menu(servery_name, servery_path)
         
         if not menu:
             continue
@@ -432,12 +488,17 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                         if not cuisine_match:
                             continue  # Skip if cuisine doesn't match
                     
-                    # Check dietary filter - if provided, MUST match
+                    # Check dietary filter(s)
                     dietary_match = True
-                    if dietary_filter:
-                        dietary_match = matches_dietary(item_data, dietary_filter)
+                    if dietary_list:
+                        if dietary_mode == "or":
+                            # At least one selected dietary must match
+                            dietary_match = any(matches_dietary(item_data, d) for d in dietary_list)
+                        else:
+                            # Default: ALL selected dietaries must match
+                            dietary_match = all(matches_dietary(item_data, d) for d in dietary_list)
                         if not dietary_match:
-                            continue  # Skip if dietary doesn't match
+                            continue  # Skip if dietary doesn't match the chosen mode
                     
                     # All filters passed, add this item
                     if item_match and cuisine_match and dietary_match:
@@ -471,6 +532,7 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
 class SearchRequest(BaseModel):
     cuisine: Optional[str] = None
     dietary: Optional[str] = None
+    dietary_mode: Optional[str] = None  # 'and' or 'or' for multiple dietary filters
     day: Optional[str] = None
     meal: Optional[str] = None
     item: Optional[str] = None
@@ -508,6 +570,7 @@ async def search(search_request: SearchRequest):
     """API endpoint for searching"""
     cuisine = (search_request.cuisine or "").strip()
     dietary = (search_request.dietary or "").strip()
+    dietary_mode = (search_request.dietary_mode or "and").strip().lower()
     day = (search_request.day or "").strip()
     meal = (search_request.meal or "").strip()
     item = (search_request.item or "").strip()
@@ -531,6 +594,7 @@ async def search(search_request: SearchRequest):
     results = find_matching_serveries(
         cuisine_filter=cuisine if cuisine else None,
         dietary_filter=dietary if dietary else None,
+        dietary_mode=dietary_mode,
         day_filter=day if day else None,
         meal_filter=meal if meal else None,
         item_filter=item if item else None
