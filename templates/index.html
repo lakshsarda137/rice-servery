@@ -1201,7 +1201,7 @@
             if (selectedCuisine && selectedCuisine !== '') {
                 addCuisine(selectedCuisine);
                 this.value = ''; // Reset dropdown
-                cuisineInput.focus();
+                cuisineSuggestions.style.display = 'none'; // Close suggestions
             }
         });
 
@@ -1284,7 +1284,7 @@
                 renderCuisineChips();
                 cuisineInput.value = '';
                 cuisineSuggestions.style.display = 'none';
-                cuisineInput.focus();
+                cuisineInput.blur(); // Remove focus so suggestions don't reappear
             }
         }
 
