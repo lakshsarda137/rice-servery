@@ -6,15 +6,19 @@ import urllib.request
 import re
 from collections import defaultdict
 from difflib import SequenceMatcher
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from datetime import datetime, timezone, time as dt_time
+from typing import Optional, Dict, Any, Tuple
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+import pytz
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+# Central Time Zone (Rice University is in Houston, TX)
+CST = pytz.timezone('America/Chicago')
 
 # Dietary icons mapping
 DIETARY_ICONS = {
@@ -75,6 +79,94 @@ SERVERIES = {
     'seibel': 'seibel-servery',
     'baker': 'baker-college-kitchen'
 }
+
+# Dining schedule (CST) - based on Fall Dining Schedule
+# Format: {servery: {day_of_week: [(meal_type, start_time, end_time), ...]}}
+# day_of_week: 0=Monday, 6=Sunday
+DINING_SCHEDULE = {
+    'seibel': {
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
+        6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
+    },
+    'north': {
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
+        6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
+    },
+    'south': {
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri
+        5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
+    },
+    'west': {
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri (no late night)
+        5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
+    },
+    'baker': {
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Fri
+        5: [],  # Sat (closed)
+        6: [],  # Sun (closed)
+    },
+}
+
+
+def get_current_meal_and_status(servery_name: str, day_name: str) -> Tuple[Optional[str], bool]:
+    """
+    Returns (current_meal_type, is_open) for a servery on a given day.
+    current_meal_type can be 'breakfast', 'lunch', 'dinner', or None if closed.
+    """
+    # Get current time in CST
+    now_cst = datetime.now(CST)
+    current_time = now_cst.time()
+    current_weekday = now_cst.weekday()  # 0=Monday, 6=Sunday
+    
+    # Map day name to weekday number
+    day_map = {
+        'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+        'friday': 4, 'saturday': 5, 'sunday': 6
+    }
+    
+    day_num = day_map.get(day_name.lower())
+    if day_num is None:
+        return None, False
+    
+    # Check if we're looking at today
+    if day_num != current_weekday:
+        return None, False
+    
+    # Get schedule for this servery and day
+    schedule = DINING_SCHEDULE.get(servery_name.lower(), {})
+    day_schedule = schedule.get(day_num, [])
+    
+    if not day_schedule:
+        return None, False
+    
+    # Check which meal period we're in
+    for meal_type, start_time, end_time in day_schedule:
+        # Normalize late_night to dinner for matching
+        meal_to_check = 'dinner' if meal_type == 'late_night' else meal_type
+        if start_time <= current_time <= end_time:
+            return meal_to_check, True
+    
+    return None, False
 
 # In-memory weekly cache:
 # {
@@ -507,6 +599,10 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                         for cuisine in cuisine_list or []:
                             if matches_cuisine(item_name, cuisine):
                                 matched_cuisines.append(cuisine)
+                        
+                        # Check if this servery is currently open and serving this meal
+                        current_meal, is_open = get_current_meal_and_status(servery_name, day)
+                        is_currently_available = is_open and current_meal == meal_type
 
                         matching_items.append({
                             'name': item_name,
@@ -514,13 +610,17 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                             'day': day,
                             'meal': meal_type,
                             'servery': servery_name,
-                            'matched_cuisines': matched_cuisines
+                            'matched_cuisines': matched_cuisines,
+                            'is_currently_available': is_currently_available
                         })
         
         if matching_items:
+            # Check if any items are currently available
+            has_current_items = any(item.get('is_currently_available', False) for item in matching_items)
             results[servery_name] = {
                 'items': matching_items,
-                'count': len(matching_items)
+                'count': len(matching_items),
+                'has_current_items': has_current_items
             }
     
     # Sort items chronologically within each servery
@@ -543,6 +643,20 @@ class SearchRequest(BaseModel):
     day: Optional[str] = None
     meal: Optional[str] = None
     item: Optional[str] = None
+
+
+@app.get("/api/current-time")
+async def get_current_time():
+    """API endpoint for getting current time (fast, no menu fetching)"""
+    now_cst = datetime.now(CST)
+    current_day_name = now_cst.strftime('%A').lower()
+    current_time_str = now_cst.strftime('%I:%M %p')
+    
+    return JSONResponse(content={
+        'day': current_day_name,
+        'time': current_time_str,
+        'timezone': 'CST'
+    })
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -607,6 +721,11 @@ async def search(search_request: SearchRequest):
         item_filter=item if item else None
     )
     
+    # Get current time info for frontend
+    now_cst = datetime.now(CST)
+    current_day_name = now_cst.strftime('%A').lower()
+    current_time_str = now_cst.strftime('%I:%M %p')
+    
     return JSONResponse(content={
         'results': results,
         'filters': {
@@ -615,6 +734,11 @@ async def search(search_request: SearchRequest):
             'day': day,
             'meal': meal,
             'item': item
+        },
+        'current_time': {
+            'day': current_day_name,
+            'time': current_time_str,
+            'timezone': 'CST'
         }
     })
 

@@ -18,6 +18,12 @@
             padding: 24px;
             line-height: 1.6;
             color: #1e293b;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: #0f172a;
+            color: #f1f5f9;
         }
 
         .container {
@@ -27,6 +33,12 @@
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body.dark-mode .container {
+            background: #1e293b;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
         }
 
         .header {
@@ -34,6 +46,45 @@
             color: white;
             padding: 48px 40px;
             text-align: center;
+            position: relative;
+        }
+
+        .dark-mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255, 255, 255, 0.35);
+            border-color: rgba(255, 255, 255, 0.7);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .current-time-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         }
 
         .header h1 {
@@ -52,6 +103,12 @@
         .filters {
             padding: 40px;
             background: white;
+            transition: background-color 0.3s ease;
+        }
+
+        body.dark-mode .filters {
+            background: #1e293b;
+            border-top: 1px solid #334155;
         }
 
         .filter-group {
@@ -68,6 +125,12 @@
             margin-bottom: 12px;
             color: #2d3748;
             font-size: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .filter-group label {
+            color: #f1f5f9;
+            font-weight: 700;
         }
 
         .filter-input {
@@ -81,9 +144,20 @@
             color: #2d3748;
         }
 
+        body.dark-mode .filter-input {
+            background: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+
         .filter-input:hover {
             border-color: #cbd5e0;
             background: white;
+        }
+
+        body.dark-mode .filter-input:hover {
+            border-color: #64748b;
+            background: #475569;
         }
 
         .filter-input:focus {
@@ -91,6 +165,12 @@
             border-color: #475569;
             background: white;
             box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+        }
+
+        body.dark-mode .filter-input:focus {
+            border-color: #64748b;
+            background: #475569;
+            box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.2);
         }
 
         .dietary-icons {
@@ -109,12 +189,25 @@
             border-radius: 999px;
             cursor: pointer;
             transition: background 0.15s, color 0.15s, border-color 0.15s;
+            font-weight: 600;
         }
 
         .dietary-mode-btn.active {
             background: #1e293b;
             color: #f9fafb;
             border-color: #1e293b;
+        }
+
+        body.dark-mode .dietary-mode-btn {
+            background: #334155;
+            border-color: #475569;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .dietary-mode-btn.active {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
         }
 
         .icon-option {
@@ -151,6 +244,27 @@
             background: #334155;
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
+        }
+
+        body.dark-mode .icon-option {
+            background: #334155;
+            border-color: #475569;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .icon-option:hover {
+            background: #475569;
+            border-color: #64748b;
+        }
+
+        body.dark-mode .icon-option.selected {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        body.dark-mode .icon-option.selected:hover {
+            background: #059669;
         }
 
         .item-with-cuisines {
@@ -218,9 +332,26 @@
             transform: translateY(0);
         }
 
+        body.dark-mode .search-btn {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            font-weight: 700;
+        }
+
+        body.dark-mode .search-btn:hover {
+            background: #059669;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
         .results {
             padding: 40px;
             background: #f8f9fa;
+            transition: background-color 0.3s ease;
+        }
+
+        body.dark-mode .results {
+            background: #0f172a;
         }
 
         .loading {
@@ -235,6 +366,23 @@
             padding: 80px 40px;
             color: #a0aec0;
             font-size: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .no-results {
+            color: #64748b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 80px 40px;
+            color: #718096;
+            font-size: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .loading {
+            color: #94a3b8;
         }
 
         .item-group {
@@ -245,6 +393,25 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             border: 1px solid #e2e8f0;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .item-group {
+            background: #1e293b;
+            border-color: #475569;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .item-group.currently-open {
+            border: 2px solid #10b981;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+        }
+
+        body.dark-mode .item-group.currently-open {
+            border-color: #10b981;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+            background: linear-gradient(135deg, #064e3b 0%, #1e293b 100%);
         }
 
         .item-group-title {
@@ -257,6 +424,24 @@
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             border-bottom: 2px solid #e2e8f0;
             text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .item-group-title {
+            color: #f1f5f9;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom-color: #475569;
+            font-weight: 800;
+        }
+
+        .item-group.currently-open .item-group-title {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-bottom-color: #10b981;
+        }
+
+        .item-group.currently-open .item-group-title::before {
+            content: "🟢 NOW OPEN - ";
         }
 
         .item-group-content {
@@ -272,6 +457,27 @@
             transition: all 0.2s ease;
         }
 
+        body.dark-mode .menu-item {
+            border-bottom-color: #334155;
+        }
+
+        .menu-item.currently-available {
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+            border-left: 4px solid #10b981;
+            padding-left: 20px;
+            margin-left: -24px;
+            margin-right: -24px;
+            padding-right: 24px;
+        }
+
+        body.dark-mode .menu-item.currently-available {
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.25) 0%, transparent 100%);
+        }
+
+        body.dark-mode .menu-item.currently-available:hover {
+            background: linear-gradient(to right, rgba(16, 185, 129, 0.35) 0%, transparent 100%);
+        }
+
         .menu-item:last-child {
             border-bottom: none;
             padding-bottom: 0;
@@ -285,11 +491,20 @@
             padding-right: 24px;
         }
 
+        body.dark-mode .menu-item:hover {
+            background: linear-gradient(to right, rgba(51, 65, 85, 0.5) 0%, transparent 100%);
+        }
+
         .menu-item-name {
             flex: 1;
             color: #334155;
             font-size: 0.9375rem;
             line-height: 1.6;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .menu-item-name {
+            color: #e2e8f0;
         }
 
         .menu-item-name strong {
@@ -299,12 +514,27 @@
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .menu-item-name strong {
+            color: #f1f5f9;
+            font-weight: 800;
         }
 
         .menu-items-list {
             list-style: none;
             margin: 4px 0 0;
             padding: 0;
+        }
+
+        .menu-items-list-item {
+            color: #334155;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .menu-items-list-item {
+            color: #e2e8f0;
         }
 
         .menu-items-list-item {
@@ -348,11 +578,23 @@
             z-index: 1000;
         }
 
+        body.dark-mode .cuisine-suggestions {
+            background: #1e293b;
+            border-color: #475569;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
         .cuisine-suggestion {
             padding: 12px 16px;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
             transition: background 0.15s ease;
+            color: #2d3748;
+        }
+
+        body.dark-mode .cuisine-suggestion {
+            color: #e2e8f0;
+            border-bottom-color: #334155;
         }
 
         .cuisine-suggestion:last-child {
@@ -363,8 +605,16 @@
             background: #f8fafc;
         }
 
+        body.dark-mode .cuisine-suggestion:hover {
+            background: #334155;
+        }
+
         .cuisine-suggestion.selected {
             background: #f0f9ff;
+        }
+
+        body.dark-mode .cuisine-suggestion.selected {
+            background: #475569;
         }
 
         .cuisine-chips {
@@ -378,7 +628,7 @@
             padding: 6px 12px;
             border-radius: 999px;
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             color: #ffffff;
         }
 
@@ -429,6 +679,24 @@
         @media (max-width: 640px) {
             body {
                 padding: 8px;
+            }
+
+            .dark-mode-toggle {
+                top: 10px;
+                right: 10px;
+                padding: 8px 14px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                background: rgba(255, 255, 255, 0.3) !important;
+                border: 2px solid rgba(255, 255, 255, 0.6) !important;
+            }
+
+            .current-time-badge {
+                top: 10px;
+                left: 10px;
+                padding: 6px 10px;
+                font-size: 0.7rem;
+                font-weight: 700;
             }
 
             .container {
@@ -531,6 +799,10 @@
                 background: #f8fafc;
             }
 
+            body.dark-mode .menu-item:hover {
+                background: rgba(51, 65, 85, 0.5);
+            }
+
             .menu-item-icons {
                 margin-top: 4px;
             }
@@ -540,6 +812,8 @@
 <body>
     <div class="container">
         <div class="header">
+            <div class="current-time-badge" id="current-time-badge">Loading time...</div>
+            <button class="dark-mode-toggle" id="dark-mode-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
             <h1>Rice University Servery Finder</h1>
             <p>Find the best serveries for your preferences</p>
         </div>
@@ -658,6 +932,56 @@
     </div>
 
     <script>
+        // Dark mode functionality - default to dark mode
+        function initDarkMode() {
+            // Check if user has explicitly set a preference
+            const userPreference = localStorage.getItem('darkMode');
+            if (userPreference === null) {
+                // No preference set, default to dark mode
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('darkMode', 'true');
+                updateDarkModeButton(true);
+            } else {
+                // Use saved preference
+                const darkMode = userPreference === 'true';
+                if (darkMode) {
+                    document.body.classList.add('dark-mode');
+                    updateDarkModeButton(true);
+                }
+            }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            updateDarkModeButton(isDark);
+        }
+
+        function updateDarkModeButton(isDark) {
+            const btn = document.getElementById('dark-mode-toggle');
+            btn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+
+        // Initialize dark mode on load
+        initDarkMode();
+
+        // Fetch current time immediately on page load (fast endpoint)
+        async function loadCurrentTime() {
+            try {
+                const response = await fetch('/api/current-time');
+                const data = await response.json();
+                const timeBadge = document.getElementById('current-time-badge');
+                if (timeBadge && data.day && data.time) {
+                    timeBadge.textContent = `${data.day.charAt(0).toUpperCase() + data.day.slice(1)} ${data.time} ${data.timezone}`;
+                }
+            } catch (error) {
+                console.error('Failed to load current time:', error);
+            }
+        }
+
+        // Load time immediately when page loads
+        loadCurrentTime();
+
         let selectedDietaries = [];
         let dietaryMode = 'and'; // 'and' = Match ALL, 'or' = Match ANY
         let selectedCuisines = [];
@@ -893,6 +1217,14 @@
                     return;
                 }
 
+                // Update current time badge (optional, already loaded on page load)
+                if (data.current_time) {
+                    const timeBadge = document.getElementById('current-time-badge');
+                    if (timeBadge) {
+                        timeBadge.textContent = `${data.current_time.day.charAt(0).toUpperCase() + data.current_time.day.slice(1)} ${data.current_time.time} ${data.current_time.timezone}`;
+                    }
+                }
+
                 displayResults(data);
             } catch (error) {
                 resultsDiv.innerHTML = `<div class="no-results">Error: ${error.message}</div>`;
@@ -933,7 +1265,8 @@
                             matchedCuisines: item.matched_cuisines || [],
                             day: item.day,
                             meal: item.meal,
-                            servery: serveryName
+                            servery: serveryName,
+                            is_currently_available: item.is_currently_available || false
                         });
                     }
                 });
@@ -966,11 +1299,13 @@
                         // Display all items from previous time slot, grouped by servery
                         for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                             const allIcons = new Set();
+                            const hasCurrentItems = serveryItems.some(i => i.is_currently_available);
                             serveryItems.forEach(i => {
                                 i.icons.forEach(icon => allIcons.add(icon));
                             });
                             
-                            html += `<div class="menu-item">
+                            const itemClass = hasCurrentItems ? 'menu-item currently-available' : 'menu-item';
+                            html += `<div class="${itemClass}">
                                 <span class="menu-item-name">
                                     <strong>${serveryName.toUpperCase()}:</strong>
                                     <ul class="menu-items-list">`;
@@ -1029,8 +1364,16 @@
                         html += `</div></div></div>`;
                         itemsByServery = {};
                     }
+                    
+                    // Check if this time slot has any currently available items
+                    const timeSlotItems = allItems.filter(i => 
+                        `${i.day.toUpperCase()} ${i.meal.toUpperCase()}` === location
+                    );
+                    const hasCurrentInSlot = timeSlotItems.some(i => i.is_currently_available);
+                    const groupClass = hasCurrentInSlot ? 'item-group currently-open' : 'item-group';
+                    
                     // Start new group
-                    html += `<div class="item-group">
+                    html += `<div class="${groupClass}">
                         <div class="item-group-title">${location}</div>
                         <div class="item-group-content">`;
                     currentLocation = location;
@@ -1047,11 +1390,13 @@
             if (currentLocation !== '') {
                 for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                     const allIcons = new Set();
+                    const hasCurrentItems = serveryItems.some(i => i.is_currently_available);
                     serveryItems.forEach(i => {
                         i.icons.forEach(icon => allIcons.add(icon));
                     });
                     
-                    html += `<div class="menu-item">
+                    const itemClass = hasCurrentItems ? 'menu-item currently-available' : 'menu-item';
+                    html += `<div class="${itemClass}">
                                <span class="menu-item-name">
                                    <strong>${serveryName.toUpperCase()}:</strong>
                                    <ul class="menu-items-list">`;

@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "servery_finder_web.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "servery_finder_web.py"
+    }
+  ],
+  "env": {
+    "ENV": "production"
+  }
+}
+
