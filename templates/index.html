@@ -832,6 +832,16 @@
                 font-size: 0.9rem;
             }
 
+            /* Stack cuisine input and dropdown on mobile */
+            .filter-group > div > div[style*="grid"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            #cuisine-dropdown {
+                width: 100% !important;
+                min-width: unset !important;
+            }
+
             .cuisine-chips {
                 gap: 6px;
             }
@@ -949,7 +959,12 @@
             <div class="filter-group">
                 <label for="cuisine">Cuisine Preference</label>
                 <div style="position: relative;">
-                    <input type="text" id="cuisine" class="filter-input" placeholder="Type to search cuisines (example: Indian, Chinese, French etc)..." autocomplete="off">
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+                        <input type="text" id="cuisine" class="filter-input" placeholder="Type to search or select from dropdown..." autocomplete="off">
+                        <select id="cuisine-dropdown" class="filter-input" style="width: auto; min-width: 180px; cursor: pointer;">
+                            <option value="">All Cuisines</option>
+                        </select>
+                    </div>
                     <div id="cuisine-suggestions" class="cuisine-suggestions" style="display: none;"></div>
                 </div>
                 <div id="cuisine-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
@@ -1126,7 +1141,9 @@
             american: '#6b7280',
             asian: '#3b82f6',
             french: '#e11d48',
-            bbq: '#b45309'
+            korean: '#dc2626',
+            vietnamese: '#059669',
+            greek: '#3b82f6'
         };
 
         // Handle dietary mode toggle (AND / OR)
@@ -1162,24 +1179,48 @@
             });
         });
 
-        // Cuisine autocomplete
+        // Cuisine autocomplete and dropdown
         const cuisineInput = document.getElementById('cuisine');
+        const cuisineDropdown = document.getElementById('cuisine-dropdown');
         const cuisineSuggestions = document.getElementById('cuisine-suggestions');
         const cuisineChips = document.getElementById('cuisine-chips');
         const cuisineLegend = document.getElementById('cuisine-legend');
         let selectedSuggestionIndex = -1;
 
-        cuisineInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase().trim();
-            if (query.length === 0) {
-                cuisineSuggestions.style.display = 'none';
-                return;
-            }
+        // Populate dropdown with all cuisine options
+        CUISINE_OPTIONS.forEach(cuisine => {
+            const option = document.createElement('option');
+            option.value = cuisine;
+            option.textContent = cuisine;
+            cuisineDropdown.appendChild(option);
+        });
 
-            const matches = CUISINE_OPTIONS.filter(cuisine => 
-                cuisine.toLowerCase().includes(query) && 
-                !selectedCuisines.includes(cuisine)
-            ).slice(0, 5);
+        // Handle dropdown selection
+        cuisineDropdown.addEventListener('change', function() {
+            const selectedCuisine = this.value;
+            if (selectedCuisine && selectedCuisine !== '') {
+                addCuisine(selectedCuisine);
+                this.value = ''; // Reset dropdown
+                cuisineInput.focus();
+            }
+        });
+
+        function showCuisineSuggestions(query = '') {
+            const queryLower = query.toLowerCase().trim();
+            let matches;
+
+            if (queryLower.length === 0) {
+                // Show all cuisines when search bar is empty
+                matches = CUISINE_OPTIONS.filter(cuisine => 
+                    !selectedCuisines.includes(cuisine)
+                );
+            } else {
+                // Filter cuisines when typing
+                matches = CUISINE_OPTIONS.filter(cuisine => 
+                    cuisine.toLowerCase().includes(queryLower) && 
+                    !selectedCuisines.includes(cuisine)
+                ).slice(0, 5);
+            }
 
             if (matches.length === 0) {
                 cuisineSuggestions.style.display = 'none';
@@ -1199,6 +1240,17 @@
                     addCuisine(this.dataset.cuisine);
                 });
             });
+        }
+
+        cuisineInput.addEventListener('input', function() {
+            showCuisineSuggestions(this.value);
+        });
+
+        // Show all cuisines when search bar is focused and empty
+        cuisineInput.addEventListener('focus', function() {
+            if (this.value.trim().length === 0) {
+                showCuisineSuggestions('');
+            }
         });
 
         cuisineInput.addEventListener('keydown', function(e) {
@@ -1276,10 +1328,13 @@
                 : '';
         }
 
-        // Close suggestions when clicking outside
+        // Close suggestions when clicking outside (but keep open if input is focused and empty)
         document.addEventListener('click', function(e) {
-            if (!cuisineInput.contains(e.target) && !cuisineSuggestions.contains(e.target)) {
-                cuisineSuggestions.style.display = 'none';
+            if (!cuisineInput.contains(e.target) && !cuisineSuggestions.contains(e.target) && !cuisineDropdown.contains(e.target)) {
+                // Only hide if input doesn't have focus or has text
+                if (document.activeElement !== cuisineInput || cuisineInput.value.trim().length > 0) {
+                    cuisineSuggestions.style.display = 'none';
+                }
             }
         });
 

@@ -63,13 +63,16 @@ CUISINE_KEYWORDS = {
     'french': ['ratatouille', 'coq au vin', 'bouillabaisse', 'cassoulet', 'quiche', 'crepe',
                'croissant', 'brie', 'camembert', 'provencal', 'bourguignon', 'confit',
                'bechamel', 'hollandaise', 'duck confit', 'escargot'],
-    'bbq': ['bbq', 'barbecue', 'smoked', 'ribs', 'pulled pork', 'brisket', 'grill'],
+    'korean': ['kimchi', 'bulgogi', 'bibimbap', 'korean bbq', 'gochujang', 'soju', 'galbi',
+               'japchae', 'tteokbokki', 'banchan', 'korean fried chicken', 'samgyeopsal'],
+    'vietnamese': ['pho', 'banh mi', 'spring roll', 'vermicelli', 'nuoc cham', 'lemongrass',
+                   'hoisin', 'fish sauce', 'bun', 'goi', 'com tam'],
+    'greek': ['gyro', 'tzatziki', 'feta', 'olive', 'spanakopita', 'moussaka', 'souvlaki',
+              'dolmades', 'baklava', 'greek salad', 'hummus', 'pita'],
     'mediterranean': ['mezze', 'hummus', 'pita', 'garbanzo', 'tzatziki', 'olive', 'feta',
                       'tabbouleh', 'falafel', 'tahini', 'moussaka', 'spanakorizo', 'shrimp'],
     'american': ['burger', 'fries', 'mac and cheese', 'meatloaf', 'shepherd\'s pie', 
-                 'mashed potatoes', 'gravy', 'biscuit', 'cornbread'],
-    'vegetarian': ['plant-based', 'tofu', 'vegetable', 'vegan'],
-    'halal': ['halal']
+                 'mashed potatoes', 'gravy', 'biscuit', 'cornbread']
 }
 
 SERVERIES = {
@@ -665,7 +668,6 @@ async def index(request: Request):
     # Get list of supported cuisines from CUISINE_KEYWORDS
     # Fix capitalization for special cases
     cuisine_map = {
-        'bbq': 'BBQ',
         'indian': 'Indian',
         'japanese': 'Japanese',
         'chinese': 'Chinese',
@@ -676,8 +678,9 @@ async def index(request: Request):
         'american': 'American',
         'asian': 'Asian',
         'french': 'French',
-        'halal': 'Halal',
-        'vegetarian': 'Vegetarian'
+        'korean': 'Korean',
+        'vietnamese': 'Vietnamese',
+        'greek': 'Greek'
     }
     supported_cuisines = sorted([cuisine_map.get(cuisine.lower(), cuisine.title()) for cuisine in CUISINE_KEYWORDS.keys()])
     return templates.TemplateResponse("index.html", {
