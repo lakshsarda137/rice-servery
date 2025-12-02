@@ -3,6 +3,7 @@ Enhanced Servery Finder with Icon Extraction and Web Interface
 """
 
 import urllib.request
+import urllib.error
 import re
 from collections import defaultdict
 from difflib import SequenceMatcher
@@ -86,38 +87,39 @@ SERVERIES = {
 # Dining schedule (CST) - based on Fall Dining Schedule
 # Format: {servery: {day_of_week: [(meal_type, start_time, end_time), ...]}}
 # day_of_week: 0=Monday, 6=Sunday
+# Meal types: breakfast, snack_period, lunch, munch, extended_dinner, dinner, late_night
 DINING_SCHEDULE = {
     'seibel': {
-        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Mon
-        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Tue
-        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Wed
-        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
-        6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
+        6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
     },
     'north': {
-        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Mon
-        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Tue
-        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Wed
-        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
-        6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
+        6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
     },
     'south': {
-        0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Mon
-        1: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Tue
-        2: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Wed
-        3: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri
-        5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri
+        5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
     },
     'west': {
-        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Mon
-        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Tue
-        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Wed
-        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri (no late night)
-        5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri (no late night, extended dinner)
+        5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
     },
     'baker': {
         0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Mon
@@ -241,7 +243,9 @@ def fetch_menu_with_icons(servery_path: str):
     hit Rice once per servery per ISO week from our side.
     """
     import time
+    # Try with timestamp first, fallback to without if 406
     url = f"https://dining.rice.edu/{servery_path}?_ts={int(time.time())}"
+    url_no_ts = f"https://dining.rice.edu/{servery_path}"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -260,10 +264,54 @@ def fetch_menu_with_icons(servery_path: str):
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=10) as response:
             html = response.read().decode('utf-8')
+    except urllib.error.HTTPError as e:
+        # Try with minimal headers if 406 error (for Baker)
+        if e.code == 406:
+            # Try progressively simpler header sets, and also try URL without timestamp
+            header_sets = [
+                {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'identity'
+                },
+                {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept': '*/*'
+                },
+                {
+                    'User-Agent': 'Mozilla/5.0'
+                }
+            ]
+            
+            # Try both URLs (with and without timestamp)
+            urls_to_try = [url, url_no_ts]
+            
+            html = None
+            for url_to_try in urls_to_try:
+                for i, simple_headers in enumerate(header_sets):
+                    try:
+                        req = urllib.request.Request(url_to_try, headers=simple_headers)
+                        with urllib.request.urlopen(req, timeout=10) as response:
+                            html = response.read().decode('utf-8')
+                            print(f"Successfully fetched {servery_path} with {'timestamp' if url_to_try == url else 'no timestamp'} and header set {i+1}")
+                            break
+                    except Exception as e2:
+                        continue
+                if html is not None:
+                    break
+            
+            if html is None:
+                print(f"Error fetching menu for {servery_path} (all retries failed): {e}")
+                return {}
+        else:
+            print(f"Error fetching menu for {servery_path}: {e}")
+            return {}
     except Exception as e:
+        print(f"Error fetching menu for {servery_path}: {e}")
         return {}
     
-    menu = defaultdict(lambda: {'breakfast': [], 'lunch': [], 'dinner': []})
+    menu = defaultdict(lambda: {'breakfast': [], 'lunch': [], 'munch': [], 'dinner': []})
     days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     
     # Find all day headers
@@ -281,8 +329,8 @@ def fetch_menu_with_icons(servery_path: str):
         
         day_section = html[day_start:day_end]
         
-        # Find BREAKFAST, LUNCH and DINNER sections
-        meal_pattern = r'<h2>(BREAKFAST|LUNCH|DINNER)</h2>'
+        # Find BREAKFAST, LUNCH, MUNCH and DINNER sections
+        meal_pattern = r'<h2>(BREAKFAST|LUNCH|MUNCH|DINNER)</h2>'
         meal_matches = list(re.finditer(meal_pattern, day_section, re.IGNORECASE))
         
         for j, meal_match in enumerate(meal_matches):
@@ -396,6 +444,8 @@ def get_weekly_menu(servery_name: str, servery_path: str):
     # Otherwise, fetch fresh data and cache it
     menu = fetch_menu_with_icons(servery_path)
     MENU_CACHE["menus"][servery_name] = menu
+    if not menu:
+        print(f"Warning: No menu items extracted for {servery_name} (path: {servery_path})")
     return menu
 
 
@@ -567,11 +617,18 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_ex
             if day_filter and day.lower() != day_filter.lower():
                 continue
             
-            # Check all meal types (breakfast, lunch, dinner)
-            for meal_type in ['breakfast', 'lunch', 'dinner']:
+            # Check all meal types (breakfast, lunch, munch, dinner)
+            for meal_type in ['breakfast', 'lunch', 'munch', 'dinner']:
                 # Check meal filter
-                if meal_filter and meal_type.lower() != meal_filter.lower():
-                    continue
+                # If filtering by munch, also check lunch items (since munch uses lunch menu)
+                if meal_filter:
+                    meal_filter_lower = meal_filter.lower()
+                    if meal_filter_lower == 'munch':
+                        # For munch filter, check both munch and lunch items
+                        if meal_type.lower() not in ['munch', 'lunch']:
+                            continue
+                    elif meal_type.lower() != meal_filter_lower:
+                        continue
                 
                 for item_data in meals.get(meal_type, []):
                     item_name = item_data['name']
@@ -624,12 +681,33 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_ex
                         # Check if this servery is currently open and serving this meal
                         current_meal, is_open = get_current_meal_and_status(servery_name, day)
                         is_currently_available = is_open and current_meal == meal_type
+                        
+                        # If filtering by munch and this is a lunch item, check if servery has munch
+                        # and only include if it does
+                        final_meal_type = meal_type
+                        if meal_filter and meal_filter.lower() == 'munch':
+                            if meal_type == 'lunch':
+                                # Only include lunch items if servery has munch on this day
+                                day_map = {
+                                    'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                                    'friday': 4, 'saturday': 5, 'sunday': 6
+                                }
+                                day_num = day_map.get(day.lower())
+                                if day_num is not None:
+                                    schedule = DINING_SCHEDULE.get(servery_name.lower(), {})
+                                    day_schedule = schedule.get(day_num, [])
+                                    has_munch = any(mt == 'munch' for mt, _, _ in day_schedule)
+                                    if not has_munch:
+                                        continue  # Skip lunch items from serveries without munch
+                                final_meal_type = 'munch'  # Display as munch
+                            elif meal_type == 'munch':
+                                final_meal_type = 'munch'
 
                         matching_items.append({
                             'name': item_name,
                             'icons': item_data['icons'],
                             'day': day,
-                            'meal': meal_type,
+                            'meal': final_meal_type,
                             'servery': servery_name,
                             'matched_cuisines': matched_cuisines,
                             'is_currently_available': is_currently_available
@@ -678,6 +756,45 @@ async def get_current_time():
         'day': current_day_name,
         'time': current_time_str,
         'timezone': 'CST'
+    })
+
+
+def get_all_currently_open_serveries():
+    """Get all currently open serveries with their current meal types"""
+    now_cst = datetime.now(CST)
+    current_time = now_cst.time()
+    current_weekday = now_cst.weekday()  # 0=Monday, 6=Sunday
+    
+    open_serveries = []
+    
+    for servery_name, schedule in DINING_SCHEDULE.items():
+        day_schedule = schedule.get(current_weekday, [])
+        
+        if not day_schedule:
+            continue
+        
+        # Check which meal period we're currently in
+        for meal_type, start_time, end_time in day_schedule:
+            if start_time <= current_time <= end_time:
+                # Format meal type for display (capitalize, replace underscores)
+                display_meal = meal_type.replace('_', ' ').title()
+                open_serveries.append({
+                    'servery': servery_name.title(),
+                    'meal': display_meal,
+                    'meal_type': meal_type
+                })
+                break  # Only one meal period at a time
+    
+    return open_serveries
+
+
+@app.get("/api/currently-open")
+async def get_currently_open():
+    """API endpoint for getting all currently open serveries"""
+    open_serveries = get_all_currently_open_serveries()
+    return JSONResponse(content={
+        'open_serveries': open_serveries,
+        'count': len(open_serveries)
     })
 
 

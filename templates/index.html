@@ -11,11 +11,6 @@
             box-sizing: border-box;
         }
 
-        html {
-            overflow-x: hidden;
-            width: 100%;
-        }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f1f5f9;
@@ -24,9 +19,6 @@
             line-height: 1.6;
             color: #1e293b;
             transition: background-color 0.3s ease, color 0.3s ease;
-            overflow-x: hidden;
-            width: 100%;
-            max-width: 100vw;
         }
 
         body.dark-mode {
@@ -42,8 +34,6 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
             overflow: hidden;
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
-            width: 100%;
-            position: relative;
         }
 
         body.dark-mode .container {
@@ -793,6 +783,36 @@
             padding: 20px 24px;
         }
 
+        /* Better mobile organization for results */
+        @media (max-width: 640px) {
+            .item-group-content {
+                padding: 16px 12px;
+            }
+
+            .menu-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 14px 0;
+            }
+
+            .menu-item-name {
+                width: 100%;
+            }
+
+            .menu-item-name strong {
+                font-size: 0.9rem;
+            }
+
+            .menu-items-list {
+                margin-top: 8px;
+            }
+
+            .menu-item-icons {
+                align-self: flex-start;
+                margin-top: 8px;
+            }
+        }
 
         .menu-item {
             display: flex;
@@ -814,7 +834,6 @@
             margin-left: -24px;
             margin-right: -24px;
             padding-right: 24px;
-            max-width: calc(100% + 48px);
         }
 
         body.dark-mode .menu-item.currently-available {
@@ -836,7 +855,6 @@
             margin: 0 -24px;
             padding-left: 36px;
             padding-right: 24px;
-            max-width: calc(100% + 48px);
         }
 
         body.dark-mode .menu-item:hover {
@@ -1032,57 +1050,245 @@
             display: inline-block;
         }
 
+        /* Now Open Chip - Small button on right */
+        .now-open-chip {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+            z-index: 1000;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+            overflow: hidden;
+            display: none;
+        }
+
+        .now-open-chip.expanded {
+            width: 200px;
+            height: 200px;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            overflow: visible;
+        }
+
+        .now-open-chip.expanded::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 12px;
+            padding: 3px;
+            background: conic-gradient(from 0deg, #10b981 0%, transparent 0%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            animation: borderRotate 5s linear forwards;
+            z-index: -1;
+        }
+
+        @keyframes borderRotate {
+            0% {
+                background: conic-gradient(from 0deg, #10b981 0%, transparent 0%);
+            }
+            100% {
+                background: conic-gradient(from 0deg, #10b981 100%, transparent 100%);
+            }
+        }
+
+        .now-open-chip-content {
+            display: none;
+        }
+
+        .now-open-chip.expanded .now-open-chip-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            flex: 1;
+        }
+
+        .now-open-chip-count {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            align-self: flex-start;
+        }
+
+        .now-open-chip-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .now-open-chip-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+
+        body.dark-mode .now-open-chip {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);
+        }
+
+        @media (max-width: 640px) {
+            .now-open-chip {
+                top: 10px;
+                right: 10px;
+                padding: 6px 10px;
+                font-size: 0.7rem;
+            }
+
+            .now-open-chip.expanded {
+                width: 180px;
+                height: 180px;
+                padding: 12px;
+            }
+        }
+
+        .now-open-chip:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
+        }
+
+        .now-open-chip-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+
+        .now-open-chip-count {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .now-open-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .now-open-chip-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .now-open-chip-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 700;
+            transition: background 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .now-open-chip-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        body.dark-mode .now-open-chip {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6);
+        }
+
         /* --- Mobile tweaks --- */
+        @media (max-width: 640px) {
+            .now-open-chip {
+                top: 8px;
+                left: 8px;
+                right: 8px;
+                transform: none;
+                padding: 8px 10px;
+                font-size: 0.7rem;
+                max-width: none;
+                width: calc(100% - 16px);
+                gap: 8px;
+                border-radius: 8px;
+            }
+
+            .now-open-chip:hover {
+                transform: none;
+            }
+
+            .now-open-chip-content {
+                gap: 6px;
+                min-width: 0;
+            }
+
+            .now-open-chip-content > span:first-child {
+                display: none; /* Hide emoji on mobile */
+            }
+
+            .now-open-chip-count {
+                font-size: 0.65rem;
+                padding: 2px 6px;
+                white-space: nowrap;
+            }
+
+            .now-open-chip-list {
+                gap: 3px;
+                flex-wrap: wrap;
+            }
+
+            .now-open-chip-item {
+                font-size: 0.65rem;
+                padding: 2px 6px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+            }
+
+            .now-open-chip-close {
+                width: 18px;
+                height: 18px;
+                font-size: 0.8rem;
+                flex-shrink: 0;
+            }
+        }
+
         @media (max-width: 640px) {
             body {
                 padding: 8px;
-            }
-
-            .item-group-content {
-                padding: 16px 12px;
-            }
-
-            .menu-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-                padding: 14px 0;
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-                max-width: 100% !important;
-            }
-
-            .menu-item.currently-available {
-                margin-left: -12px !important;
-                margin-right: -12px !important;
-                padding-left: 16px;
-                padding-right: 12px;
-                max-width: calc(100% + 24px) !important;
-            }
-
-            .menu-item:hover {
-                margin-left: 0 !important;
-                margin-right: 0 !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
-                max-width: 100% !important;
-            }
-
-            .menu-item-name {
-                width: 100%;
-            }
-
-            .menu-item-name strong {
-                font-size: 0.9rem;
-            }
-
-            .menu-items-list {
-                margin-top: 8px;
-            }
-
-            .menu-item-icons {
-                align-self: flex-start;
-                margin-top: 8px;
             }
 
             .dark-mode-toggle {
@@ -1178,7 +1384,6 @@
 
             select.filter-input {
                 min-height: 40px;
-                font-size: 16px !important; /* Prevent iOS auto-zoom */
             }
 
             .search-btn {
@@ -1240,6 +1445,14 @@
     </style>
 </head>
 <body>
+    <div class="now-open-chip" id="now-open-chip" onclick="toggleOpenChip()">
+        <span id="now-open-chip-label">Show Open Serveries</span>
+        <div class="now-open-chip-content">
+            <span class="now-open-chip-count" id="now-open-count">0 Open</span>
+            <div class="now-open-chip-list" id="now-open-list"></div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
             <div class="current-time-badge" id="current-time-badge">Loading time...</div>
@@ -1267,8 +1480,8 @@
                     <div>
                         <select id="meal" class="filter-input">
                             <option value="">All Meals</option>
-                            <option value="breakfast">Breakfast</option>
                             <option value="lunch">Lunch</option>
+                            <option value="munch">Munch</option>
                             <option value="dinner">Dinner</option>
                         </select>
                     </div>
@@ -1480,6 +1693,69 @@
 
         // Initialize dark mode on load
         initDarkMode();
+
+        // Now Open Chip functionality
+        let chipExpanded = false;
+        let chipAutoCollapseTimeout = null;
+
+        async function loadCurrentlyOpen() {
+            try {
+                const response = await fetch('/api/currently-open');
+                const data = await response.json();
+                const chip = document.getElementById('now-open-chip');
+                const countEl = document.getElementById('now-open-count');
+                const listEl = document.getElementById('now-open-list');
+                const labelEl = document.getElementById('now-open-chip-label');
+
+                if (data.count > 0) {
+                    chip.style.display = 'block';
+                    countEl.textContent = `${data.count} Open Now`;
+                    
+                    // Build list of open serveries
+                    listEl.innerHTML = data.open_serveries.map(item => 
+                        `<div class="now-open-chip-item">${item.servery}: ${item.meal}</div>`
+                    ).join('');
+                } else {
+                    chip.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Failed to load currently open serveries:', error);
+            }
+        }
+
+        function toggleOpenChip() {
+            const chip = document.getElementById('now-open-chip');
+            const labelEl = document.getElementById('now-open-chip-label');
+            
+            if (chipExpanded) {
+                // Collapse
+                chip.classList.remove('expanded');
+                labelEl.style.display = 'inline';
+                chipExpanded = false;
+                if (chipAutoCollapseTimeout) {
+                    clearTimeout(chipAutoCollapseTimeout);
+                    chipAutoCollapseTimeout = null;
+                }
+            } else {
+                // Expand
+                chip.classList.add('expanded');
+                labelEl.style.display = 'none';
+                chipExpanded = true;
+                
+                // Auto-collapse after 5 seconds (border animation completes)
+                chipAutoCollapseTimeout = setTimeout(() => {
+                    chip.classList.remove('expanded');
+                    labelEl.style.display = 'inline';
+                    chipExpanded = false;
+                }, 5000);
+            }
+        }
+
+        // Load currently open on page load
+        loadCurrentlyOpen();
+
+        // Update every minute
+        setInterval(loadCurrentlyOpen, 60000);
 
         // Fetch current time immediately on page load (fast endpoint)
         async function loadCurrentTime() {
@@ -1836,6 +2112,51 @@
             }
         }
 
+        // Helper: Check if servery has munch on a given day
+        // Based on DINING_SCHEDULE from backend
+        const SERVERY_MUNCH_SCHEDULE = {
+            'south': [0, 1, 2, 3, 4, 5], // Mon-Fri, Sat
+            'west': [0, 1, 2, 3, 4, 5], // Mon-Fri, Sat
+            'north': [6], // Sun only
+            'seibel': [6], // Sun only
+            'baker': [] // No munch
+        };
+
+        function serveryHasMunch(serveryName, dayName) {
+            const dayMap = {
+                'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                'friday': 4, 'saturday': 5, 'sunday': 6
+            };
+            const dayNum = dayMap[dayName.toLowerCase()];
+            if (dayNum === undefined) return false;
+            const serveryLower = serveryName.toLowerCase();
+            return SERVERY_MUNCH_SCHEDULE[serveryLower] && SERVERY_MUNCH_SCHEDULE[serveryLower].includes(dayNum);
+        }
+
+        // Helper: Check if current time is in munch period for a servery
+        function isCurrentlyInMunch(serveryName, dayName) {
+            if (!serveryHasMunch(serveryName, dayName)) return false;
+            // Check if we're in munch time (2-4pm weekdays, 3-5pm weekends for most)
+            const now = new Date();
+            const hour = now.getHours();
+            const day = now.getDay(); // 0=Sunday, 6=Saturday
+            const serveryLower = serveryName.toLowerCase();
+            
+            // Weekdays (Mon-Fri): munch is 2-4pm (14:00-16:00)
+            if (day >= 1 && day <= 5) {
+                if ((serveryLower === 'south' || serveryLower === 'west') && hour >= 14 && hour < 16) {
+                    return true;
+                }
+            }
+            // Weekends: munch is 3-5pm (15:00-17:00)
+            if (day === 0 || day === 6) {
+                if (hour >= 15 && hour < 17) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
             const results = data.results || {};
@@ -1854,7 +2175,7 @@
 
             // Day and meal order for chronological sorting
             const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-            const MEAL_ORDER = ['breakfast', 'lunch', 'dinner'];
+            const MEAL_ORDER = ['breakfast', 'lunch', 'munch', 'dinner'];
 
             // Collect all items from all serveries with their servery info
             const allItems = [];
@@ -1895,7 +2216,20 @@
 
             // Display items in chronological order, grouping by time slot and servery
             allItems.forEach((item, index) => {
-                const location = `${item.day.toUpperCase()} ${item.meal.toUpperCase()}`;
+                // Check if this is lunch and if any servery in this time slot has munch
+                let mealDisplay = item.meal.toUpperCase();
+                if (item.meal.toLowerCase() === 'lunch') {
+                    // Check all items in this time slot to see if any servery has munch
+                    const timeSlotItems = allItems.filter(i => 
+                        i.day.toLowerCase() === item.day.toLowerCase() && 
+                        i.meal.toLowerCase() === 'lunch'
+                    );
+                    const hasMunchServery = timeSlotItems.some(i => serveryHasMunch(i.servery, i.day));
+                    if (hasMunchServery) {
+                        mealDisplay = 'LUNCH/MUNCH';
+                    }
+                }
+                const location = `${item.day.toUpperCase()} ${mealDisplay}`;
                 
                 // Start new time slot group if needed
                 if (location !== currentLocation) {
@@ -1904,7 +2238,17 @@
                         // Display all items from previous time slot, grouped by servery
                         for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                             const allIcons = new Set();
-                            const hasCurrentItems = serveryItems.some(i => i.is_currently_available);
+                            // Check if this servery should be highlighted
+                            // For lunch/munch: only highlight if currently in lunch OR munch period
+                            let hasCurrentItems = false;
+                            if (currentLocation.includes('LUNCH/MUNCH')) {
+                                const firstItem = serveryItems[0];
+                                const inLunch = serveryItems.some(i => i.is_currently_available && i.meal.toLowerCase() === 'lunch');
+                                const inMunch = isCurrentlyInMunch(serveryName, firstItem.day);
+                                hasCurrentItems = inLunch || inMunch;
+                            } else {
+                                hasCurrentItems = serveryItems.some(i => i.is_currently_available);
+                            }
                             serveryItems.forEach(i => {
                                 i.icons.forEach(icon => allIcons.add(icon));
                             });
@@ -1971,10 +2315,28 @@
                     }
                     
                     // Check if this time slot has any currently available items
-                    const timeSlotItems = allItems.filter(i => 
-                        `${i.day.toUpperCase()} ${i.meal.toUpperCase()}` === location
-                    );
-                    const hasCurrentInSlot = timeSlotItems.some(i => i.is_currently_available);
+                    // For lunch/munch, check both lunch and munch periods
+                    const timeSlotItems = allItems.filter(i => {
+                        const iMeal = i.meal.toLowerCase();
+                        const iDay = i.day.toLowerCase();
+                        if (location.includes('LUNCH/MUNCH')) {
+                            return iMeal === 'lunch' && iDay === item.day.toLowerCase();
+                        }
+                        return `${i.day.toUpperCase()} ${i.meal.toUpperCase()}` === location;
+                    });
+                    let hasCurrentInSlot = false;
+                    if (location.includes('LUNCH/MUNCH')) {
+                        const dayName = item.day.toLowerCase();
+                        const lunchItems = timeSlotItems.filter(i => i.meal.toLowerCase() === 'lunch');
+                        const inLunch = lunchItems.some(i => i.is_currently_available);
+                        // Check if any servery with munch is currently in munch period
+                        const inMunch = timeSlotItems.some(i => 
+                            serveryHasMunch(i.servery, dayName) && isCurrentlyInMunch(i.servery, dayName)
+                        );
+                        hasCurrentInSlot = inLunch || inMunch;
+                    } else {
+                        hasCurrentInSlot = timeSlotItems.some(i => i.is_currently_available);
+                    }
                     const groupClass = hasCurrentInSlot ? 'item-group currently-open' : 'item-group';
                     
                     // Start new group
@@ -1995,7 +2357,16 @@
             if (currentLocation !== '') {
                 for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                     const allIcons = new Set();
-                    const hasCurrentItems = serveryItems.some(i => i.is_currently_available);
+                    // Check if this servery should be highlighted (same logic as above)
+                    let hasCurrentItems = false;
+                    if (currentLocation.includes('LUNCH/MUNCH')) {
+                        const firstItem = serveryItems[0];
+                        const inLunch = serveryItems.some(i => i.is_currently_available && i.meal.toLowerCase() === 'lunch');
+                        const inMunch = isCurrentlyInMunch(serveryName, firstItem.day);
+                        hasCurrentItems = inLunch || inMunch;
+                    } else {
+                        hasCurrentItems = serveryItems.some(i => i.is_currently_available);
+                    }
                     serveryItems.forEach(i => {
                         i.icons.forEach(icon => allIcons.add(icon));
                     });
