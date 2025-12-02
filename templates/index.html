@@ -56,14 +56,18 @@
             background: rgba(255, 255, 255, 0.25);
             border: 2px solid rgba(255, 255, 255, 0.5);
             color: white;
-            padding: 10px 18px;
+            padding: 8px 14px;
             border-radius: 10px;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-weight: 600;
             transition: all 0.2s ease;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             z-index: 10;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .dark-mode-toggle:hover {
@@ -80,11 +84,15 @@
             background: rgba(255, 255, 255, 0.2);
             border: 2px solid rgba(255, 255, 255, 0.4);
             color: white;
-            padding: 8px 14px;
+            padding: 6px 12px;
             border-radius: 8px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .header h1 {
@@ -119,6 +127,108 @@
             margin-bottom: 0;
         }
 
+        .time-filter-group {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #0ea5e9;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+        }
+
+        body.dark-mode .time-filter-group {
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
+            border-color: #0ea5e9;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+
+        .time-filter-group label {
+            color: #0c4a6e;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.dark-mode .time-filter-group label {
+            color: #7dd3fc;
+        }
+
+        .time-filter-group label::before {
+            content: "🕐";
+            font-size: 1.2rem;
+        }
+
+        .cuisine-filter-group {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #f97316;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
+        }
+
+        body.dark-mode .cuisine-filter-group {
+            background: linear-gradient(135deg, #7c2d12 0%, #1e293b 100%);
+            border-color: #f97316;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .cuisine-filter-group label {
+            color: #9a3412;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.dark-mode .cuisine-filter-group label {
+            color: #fdba74;
+        }
+
+        .cuisine-filter-group label::before {
+            content: "🍽️";
+            font-size: 1.2rem;
+        }
+
+        .item-filter-group {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #16a34a;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
+        }
+
+        body.dark-mode .item-filter-group {
+            background: linear-gradient(135deg, #14532d 0%, #1e293b 100%);
+            border-color: #16a34a;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+        }
+
+        .item-filter-group label {
+            color: #166534;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.dark-mode .item-filter-group label {
+            color: #86efac;
+        }
+
+        .item-filter-group label::before {
+            content: "🔍";
+            font-size: 1.2rem;
+        }
+
         .filter-group label {
             display: block;
             font-weight: 600;
@@ -142,6 +252,39 @@
             transition: all 0.2s ease;
             background: #f8f9fa;
             color: #2d3748;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input-wrapper .filter-input {
+            padding-right: 50px;
+        }
+
+        .search-magnifier {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            opacity: 0.5;
+            animation: magnifierMove 3s ease-in-out infinite;
+        }
+
+        @keyframes magnifierMove {
+            0%, 100% {
+                transform: translateY(-50%) translateX(0);
+            }
+            50% {
+                transform: translateY(-50%) translateX(-8px);
+            }
+        }
+
+        body.dark-mode .search-magnifier {
+            opacity: 0.6;
         }
 
         body.dark-mode .filter-input {
@@ -181,21 +324,32 @@
         }
 
         .dietary-mode-btn {
-            border: 1px solid #cbd5e0;
+            border: 2px solid #cbd5e0;
             background: #f8fafc;
-            color: #1f2933;
+            color: #64748b;
             font-size: 11px;
             padding: 4px 10px;
             border-radius: 999px;
             cursor: pointer;
-            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            transition: all 0.15s ease;
             font-weight: 600;
         }
 
         .dietary-mode-btn.active {
-            background: #1e293b;
-            color: #f9fafb;
-            border-color: #1e293b;
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .dietary-mode-btn:hover {
+            border-color: #94a3b8;
+            background: #e2e8f0;
+        }
+
+        .dietary-mode-btn.active:hover {
+            background: #059669;
+            border-color: #059669;
         }
 
         body.dark-mode .dietary-mode-btn {
@@ -629,17 +783,48 @@
             padding: 20px 24px;
         }
 
+        /* Better mobile organization for results */
+        @media (max-width: 640px) {
+            .item-group-content {
+                padding: 16px 12px;
+            }
+
+            .menu-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 14px 0;
+            }
+
+            .menu-item-name {
+                width: 100%;
+            }
+
+            .menu-item-name strong {
+                font-size: 0.9rem;
+            }
+
+            .menu-items-list {
+                margin-top: 8px;
+            }
+
+            .menu-item-icons {
+                align-self: flex-start;
+                margin-top: 8px;
+            }
+        }
+
         .menu-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 16px;
             padding: 16px 0;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 2px solid #cbd5e0;
             transition: all 0.2s ease;
         }
 
         body.dark-mode .menu-item {
-            border-bottom-color: #334155;
+            border-bottom-color: #475569;
         }
 
         .menu-item.currently-available {
@@ -689,18 +874,23 @@
         }
 
         .menu-item-name strong {
-            color: #1e293b;
+            color: #0ea5e9;
             font-weight: 700;
             margin-right: 10px;
             font-size: 0.875rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             transition: color 0.3s ease;
+            display: block;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 4px;
         }
 
         body.dark-mode .menu-item-name strong {
-            color: #f1f5f9;
+            color: #60a5fa;
             font-weight: 800;
+            border-bottom-color: #10b981;
         }
 
         .menu-items-list {
@@ -712,16 +902,20 @@
         .menu-items-list-item {
             color: #334155;
             transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 0;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         body.dark-mode .menu-items-list-item {
             color: #e2e8f0;
+            border-bottom-color: #475569;
         }
 
-        .menu-items-list-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .menu-items-list-item:last-child {
+            border-bottom: none;
         }
 
         .menu-item-icons {
@@ -865,19 +1059,21 @@
             .dark-mode-toggle {
                 top: 10px;
                 right: 10px;
-                padding: 8px 14px;
-                font-size: 0.8rem;
+                padding: 6px 10px;
+                font-size: 0.7rem;
                 font-weight: 700;
                 background: rgba(255, 255, 255, 0.3) !important;
                 border: 2px solid rgba(255, 255, 255, 0.6) !important;
+                max-width: 110px;
             }
 
             .current-time-badge {
                 top: 10px;
                 left: 10px;
-                padding: 6px 10px;
-                font-size: 0.7rem;
+                padding: 5px 8px;
+                font-size: 0.65rem;
                 font-weight: 700;
+                max-width: 110px;
             }
 
             .container {
@@ -974,28 +1170,13 @@
                 font-size: 0.85rem;
             }
 
-            /* Stack name and icons vertically on small screens so long lines don't get cramped */
-            .menu-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-                padding: 12px 0;
+            .time-filter-group {
+                padding: 16px;
+                margin-bottom: 24px;
             }
 
-            /* Disable the desktop hover "slide" effect on mobile to avoid horizontal clipping */
-            .menu-item:hover {
-                margin: 0;
-                padding-left: 0;
-                padding-right: 0;
-                background: #f8fafc;
-            }
-
-            body.dark-mode .menu-item:hover {
-                background: rgba(51, 65, 85, 0.5);
-            }
-
-            .menu-item-icons {
-                margin-top: 4px;
+            .time-filter-group label {
+                font-size: 1rem;
             }
 
             .loading-container {
@@ -1038,12 +1219,44 @@
         </div>
 
         <div class="filters">
-            <div class="filter-group">
+            <div class="filter-group time-filter-group">
+                <label>Time Filter</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <select id="day" class="filter-input">
+                            <option value="">All Days</option>
+                            <option value="monday">Monday</option>
+                            <option value="tuesday">Tuesday</option>
+                            <option value="wednesday">Wednesday</option>
+                            <option value="thursday">Thursday</option>
+                            <option value="friday">Friday</option>
+                            <option value="saturday">Saturday</option>
+                            <option value="sunday">Sunday</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="meal" class="filter-input">
+                            <option value="">All Meals</option>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-group cuisine-filter-group">
                 <label for="cuisine">Cuisine Preference</label>
                 <div style="position: relative;">
-                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;">
+                    <div class="search-input-wrapper">
                         <input type="text" id="cuisine" class="filter-input" placeholder="Type to search or select from dropdown..." autocomplete="off">
-                        <select id="cuisine-dropdown" class="filter-input" style="width: auto; min-width: 180px; cursor: pointer;">
+                        <svg class="search-magnifier" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 8px;">
+                        <select id="cuisine-dropdown" class="filter-input" style="width: auto; min-width: 180px; cursor: pointer; padding-right: 18px;">
                             <option value="">All Cuisines</option>
                         </select>
                     </div>
@@ -1053,7 +1266,7 @@
                 <div id="cuisine-legend" class="cuisine-legend"></div>
             </div>
 
-            <div class="filter-group">
+            <div class="filter-group item-filter-group">
                 <label for="item">Search Specific Item (Optional)</label>
                 <input type="text" id="item" class="filter-input" placeholder="example: paneer, pad thai, biryani">
             </div>
@@ -1193,31 +1406,6 @@
                 </div>
             </div>
 
-            <div class="filter-group">
-                <label>Time Filter</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div>
-                        <select id="day" class="filter-input">
-                            <option value="">Whole Week</option>
-                            <option value="monday">Monday</option>
-                            <option value="tuesday">Tuesday</option>
-                            <option value="wednesday">Wednesday</option>
-                            <option value="thursday">Thursday</option>
-                            <option value="friday">Friday</option>
-                            <option value="saturday">Saturday</option>
-                            <option value="sunday">Sunday</option>
-                        </select>
-                    </div>
-                    <div>
-                        <select id="meal" class="filter-input">
-                            <option value="">All Meals</option>
-                            <option value="breakfast">Breakfast</option>
-                            <option value="lunch">Lunch</option>
-                            <option value="dinner">Dinner</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
 
             <button class="search-btn" onclick="search()">Search Serveries</button>
         </div>
