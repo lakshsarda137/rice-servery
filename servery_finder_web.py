@@ -511,8 +511,14 @@ def fuzzy_match(query, text, threshold=0.75):
     return False
 
 
-def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter=None, meal_filter=None, item_filter=None, dietary_mode: str = "and"):
-    """Find serveries matching filters"""
+def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_exclude=None, day_filter=None, meal_filter=None, item_filter=None, dietary_mode: str = "and"):
+    """Find serveries matching filters
+    
+    Args:
+        dietary_filter: Items that MUST contain these dietary restrictions (comma-separated)
+        dietary_exclude: Items that MUST NOT contain these dietary restrictions (comma-separated)
+        dietary_mode: 'and' or 'or' for combining multiple dietary_filter items
+    """
     results = {}
     
     # Day order for chronological sorting
@@ -524,10 +530,15 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
     if cuisine_filter:
         cuisine_list = [c.strip() for c in cuisine_filter.split(',') if c.strip()]
     
-    # Parse multiple dietary filters if comma-separated
+    # Parse multiple dietary filters if comma-separated (include)
     dietary_list = []
     if dietary_filter:
         dietary_list = [d.strip() for d in dietary_filter.split(',') if d.strip()]
+    
+    # Parse multiple dietary exclusions if comma-separated (exclude)
+    dietary_exclude_list = []
+    if dietary_exclude:
+        dietary_exclude_list = [d.strip() for d in dietary_exclude.split(',') if d.strip()]
 
     # Determine if item_filter is a cuisine or specific item
     is_cuisine_search = False
@@ -583,7 +594,7 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                         if not cuisine_match:
                             continue  # Skip if cuisine doesn't match
                     
-                    # Check dietary filter(s)
+                    # Check dietary filter(s) - items that MUST contain these
                     dietary_match = True
                     if dietary_list:
                         if dietary_mode == "or":
@@ -594,6 +605,13 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
                             dietary_match = all(matches_dietary(item_data, d) for d in dietary_list)
                         if not dietary_match:
                             continue  # Skip if dietary doesn't match the chosen mode
+                    
+                    # Check dietary exclusions - items that MUST NOT contain these
+                    if dietary_exclude_list:
+                        # Item must NOT contain ANY of the excluded dietaries
+                        has_excluded = any(matches_dietary(item_data, d) for d in dietary_exclude_list)
+                        if has_excluded:
+                            continue  # Skip if item contains any excluded dietary restriction
                     
                     # All filters passed, add this item
                     if item_match and cuisine_match and dietary_match:
@@ -641,8 +659,9 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, day_filter
 
 class SearchRequest(BaseModel):
     cuisine: Optional[str] = None
-    dietary: Optional[str] = None
-    dietary_mode: Optional[str] = None  # 'and' or 'or' for multiple dietary filters
+    dietary: Optional[str] = None  # Items that MUST contain these (comma-separated)
+    dietary_exclude: Optional[str] = None  # Items that MUST NOT contain these (comma-separated)
+    dietary_mode: Optional[str] = None  # 'and' or 'or' for combining multiple dietary filters
     day: Optional[str] = None
     meal: Optional[str] = None
     item: Optional[str] = None
@@ -694,12 +713,36 @@ async def search(search_request: SearchRequest):
     """API endpoint for searching"""
     cuisine = (search_request.cuisine or "").strip()
     dietary = (search_request.dietary or "").strip()
+    dietary_exclude = (search_request.dietary_exclude or "").strip()
     dietary_mode = (search_request.dietary_mode or "and").strip().lower()
     day = (search_request.day or "").strip()
     meal = (search_request.meal or "").strip()
     item = (search_request.item or "").strip()
     
-    if not cuisine and not dietary and not day and not meal and not item:
+    # Check for contradictory selections (same item in both include and exclude)
+    if dietary and dietary_exclude:
+        dietary_list = [d.strip().lower() for d in dietary.split(',') if d.strip()]
+        dietary_exclude_list = [d.strip().lower() for d in dietary_exclude.split(',') if d.strip()]
+        contradictions = set(dietary_list) & set(dietary_exclude_list)
+        if contradictions:
+            contradiction_items = ', '.join([item.title() for item in contradictions])
+            return JSONResponse(
+                status_code=400,
+                content={
+                    'error': f'Contradictory selection: You selected "{contradiction_items}" in both "Show items WITH these" and "Show items WITHOUT these". Please remove it from one section.',
+                    'results': {},
+                    'filters': {
+                        'cuisine': cuisine,
+                        'dietary': dietary,
+                        'dietary_exclude': dietary_exclude,
+                        'day': day,
+                        'meal': meal,
+                        'item': item
+                    }
+                }
+            )
+    
+    if not cuisine and not dietary and not dietary_exclude and not day and not meal and not item:
         return JSONResponse(
             status_code=400,
             content={
@@ -708,6 +751,7 @@ async def search(search_request: SearchRequest):
                 'filters': {
                     'cuisine': cuisine,
                     'dietary': dietary,
+                    'dietary_exclude': dietary_exclude,
                     'day': day,
                     'meal': meal,
                     'item': item
@@ -718,6 +762,7 @@ async def search(search_request: SearchRequest):
     results = find_matching_serveries(
         cuisine_filter=cuisine if cuisine else None,
         dietary_filter=dietary if dietary else None,
+        dietary_exclude=dietary_exclude if dietary_exclude else None,
         dietary_mode=dietary_mode,
         day_filter=day if day else None,
         meal_filter=meal if meal else None,
@@ -734,6 +779,7 @@ async def search(search_request: SearchRequest):
         'filters': {
             'cuisine': cuisine,
             'dietary': dietary,
+            'dietary_exclude': dietary_exclude,
             'day': day,
             'meal': meal,
             'item': item

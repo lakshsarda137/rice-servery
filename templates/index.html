@@ -210,6 +210,61 @@
             border-color: #10b981;
         }
 
+        .dietary-filter-mode-btn {
+            border: 2px solid #cbd5e0;
+            background: white;
+            color: #1f2933;
+            font-size: 0.85rem;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+
+        .dietary-filter-mode-btn:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+        }
+
+        .dietary-filter-mode-btn.active {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        body.dark-mode .dietary-filter-mode-btn {
+            background: #334155;
+            border-color: #475569;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .dietary-filter-mode-btn:hover {
+            background: #475569;
+            border-color: #64748b;
+        }
+
+        body.dark-mode .dietary-filter-mode-btn.active {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+
+        body.dark-mode .filter-group > div[style*="background: #f8fafc"] {
+            background: #1e293b !important;
+            border-color: #475569 !important;
+        }
+
+        body.dark-mode #dietary-mode-explanation {
+            color: #cbd5e1;
+        }
+
+        /* Dark mode styles for include/exclude sections - keep white text */
+        body.dark-mode .filter-group > div[style*="background: #1e293b"] {
+            background: #0f172a !important;
+        }
+
         .icon-option {
             display: inline-flex;
             align-items: center;
@@ -233,17 +288,32 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
-        .icon-option.selected {
-            background: #1e293b;
+        /* Selected buttons in include section - green */
+        .dietary-icons-include .icon-option.selected {
+            background: #10b981;
             color: white;
-            border-color: #1e293b;
-            box-shadow: 0 4px 15px rgba(30, 41, 59, 0.2);
+            border-color: #10b981;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
 
-        .icon-option.selected:hover {
-            background: #334155;
+        .dietary-icons-include .icon-option.selected:hover {
+            background: #059669;
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Selected buttons in exclude section - red */
+        .dietary-icons-exclude .icon-option.selected {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .dietary-icons-exclude .icon-option.selected:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
         }
 
         body.dark-mode .icon-option {
@@ -257,14 +327,26 @@
             border-color: #64748b;
         }
 
-        body.dark-mode .icon-option.selected {
+        /* Dark mode - include section selected buttons (green) */
+        body.dark-mode .dietary-icons-include .icon-option.selected {
             background: #10b981;
             border-color: #10b981;
             color: white;
         }
 
-        body.dark-mode .icon-option.selected:hover {
+        body.dark-mode .dietary-icons-include .icon-option.selected:hover {
             background: #059669;
+        }
+
+        /* Dark mode - exclude section selected buttons (red) */
+        body.dark-mode .dietary-icons-exclude .icon-option.selected {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+
+        body.dark-mode .dietary-icons-exclude .icon-option.selected:hover {
+            background: #dc2626;
         }
 
         .item-with-cuisines {
@@ -978,14 +1060,26 @@
 
             <div class="filter-group">
                 <label>Dietary Restrictions</label>
-                <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
-                    <span style="font-size: 12px; color: #64748b;">If you pick more than one tag, combine using:</span>
-                    <div style="display: inline-flex; gap: 6px;">
-                        <button id="dietary-mode-and" type="button" class="dietary-mode-btn active">AND (all tags)</button>
-                        <button id="dietary-mode-or" type="button" class="dietary-mode-btn">OR (any tag)</button>
+                
+                <!-- Include Section: Show items WITH these tags -->
+                <div style="margin-bottom: 24px; padding: 16px; background: #1e293b; border-radius: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-weight: 700; color: white; font-size: 0.95rem;">✅ Show items WITH these:</span>
                     </div>
-                </div>
-                <div class="dietary-icons" id="dietary-icons">
+                    <div style="font-size: 0.8rem; color: white; margin-bottom: 12px; line-height: 1.5;">
+                        Select tags to find food that contains them. Example: Select "Vegan" to see only vegan items.
+                    </div>
+                    
+                    <!-- AND/OR Mode for Include -->
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <span style="font-size: 12px; color: white; font-weight: 600;">If you pick more than one tag, combine using:</span>
+                        <div style="display: inline-flex; gap: 6px;">
+                            <button id="dietary-mode-and" type="button" class="dietary-mode-btn active">AND (all tags)</button>
+                            <button id="dietary-mode-or" type="button" class="dietary-mode-btn">OR (any tag)</button>
+                        </div>
+                    </div>
+                    
+                    <div class="dietary-icons dietary-icons-include" id="dietary-icons-include">
                     <div class="icon-option" data-dietary="vegan">
                         <div class="icon-circle icon-vegan">V</div>
                         <span>Vegan</span>
@@ -1033,6 +1127,68 @@
                     <div class="icon-option" data-dietary="sesame">
                         <div class="icon-circle icon-sesame">🌾</div>
                         <span>Sesame</span>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Exclude Section: Show items WITHOUT these tags -->
+                <div style="margin-top: 24px; padding: 16px; background: #1e293b; border-radius: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-weight: 700; color: white; font-size: 0.95rem;">❌ Show items WITHOUT these (for allergies):</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: white; margin-bottom: 12px; line-height: 1.5;">
+                        Select tags to find food that does NOT contain them. Example: Select "Peanuts" if you're allergic to see only items with no peanuts.
+                    </div>
+                    
+                    <div class="dietary-icons dietary-icons-exclude" id="dietary-icons-exclude">
+                        <div class="icon-option" data-dietary="vegan">
+                            <div class="icon-circle icon-vegan">V</div>
+                            <span>Vegan</span>
+                        </div>
+                        <div class="icon-option" data-dietary="vegetarian">
+                            <div class="icon-circle icon-vegetarian">V</div>
+                            <span>Vegetarian</span>
+                        </div>
+                        <div class="icon-option" data-dietary="halal">
+                            <div class="icon-circle icon-halal">H</div>
+                            <span>Halal</span>
+                        </div>
+                        <div class="icon-option" data-dietary="gluten">
+                            <div class="icon-circle icon-gluten">🌾</div>
+                            <span>Gluten</span>
+                        </div>
+                        <div class="icon-option" data-dietary="soy">
+                            <div class="icon-circle icon-soy">🫘</div>
+                            <span>Soy</span>
+                        </div>
+                        <div class="icon-option" data-dietary="dairy">
+                            <div class="icon-circle icon-dairy">🥛</div>
+                            <span>Dairy</span>
+                        </div>
+                        <div class="icon-option" data-dietary="eggs">
+                            <div class="icon-circle icon-eggs">🥚</div>
+                            <span>Eggs</span>
+                        </div>
+                        <div class="icon-option" data-dietary="fish">
+                            <div class="icon-circle icon-fish">🐟</div>
+                            <span>Fish</span>
+                        </div>
+                        <div class="icon-option" data-dietary="shellfish">
+                            <div class="icon-circle icon-shellfish">🦞</div>
+                            <span>Shellfish</span>
+                        </div>
+                        <div class="icon-option" data-dietary="peanuts">
+                            <div class="icon-circle icon-peanuts">🥜</div>
+                            <span>Peanuts</span>
+                        </div>
+                        <div class="icon-option" data-dietary="tree nuts">
+                            <div class="icon-circle icon-tree-nuts">🌰</div>
+                            <span>Tree Nuts</span>
+                        </div>
+                        <div class="icon-option" data-dietary="sesame">
+                            <div class="icon-circle icon-sesame">🌾</div>
+                            <span>Sesame</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1124,8 +1280,9 @@
         // Load time immediately when page loads
         loadCurrentTime();
 
-        let selectedDietaries = [];
-        let dietaryMode = 'and'; // 'and' = Match ALL, 'or' = Match ANY
+        let selectedDietariesInclude = []; // Items that MUST contain these
+        let selectedDietariesExclude = []; // Items that MUST NOT contain these
+        let dietaryMode = 'and'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
         let selectedCuisines = [];
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
@@ -1146,7 +1303,7 @@
             greek: '#3b82f6'
         };
 
-        // Handle dietary mode toggle (AND / OR)
+        // Handle dietary mode toggle (AND / OR) - only for include mode
         const dietaryModeAndBtn = document.getElementById('dietary-mode-and');
         const dietaryModeOrBtn = document.getElementById('dietary-mode-or');
 
@@ -1162,18 +1319,35 @@
             dietaryModeAndBtn.classList.remove('active');
         });
 
-        // Handle dietary icon clicks (allow multiple selections)
-        document.querySelectorAll('.icon-option').forEach(option => {
+        // Handle dietary icon clicks for INCLUDE section
+        document.querySelectorAll('#dietary-icons-include .icon-option').forEach(option => {
             option.addEventListener('click', function() {
                 const value = this.dataset.dietary;
                 // Toggle this dietary filter on/off
                 if (this.classList.contains('selected')) {
                     this.classList.remove('selected');
-                    selectedDietaries = selectedDietaries.filter(d => d !== value);
+                    selectedDietariesInclude = selectedDietariesInclude.filter(d => d !== value);
                 } else {
                     this.classList.add('selected');
-                    if (!selectedDietaries.includes(value)) {
-                        selectedDietaries.push(value);
+                    if (!selectedDietariesInclude.includes(value)) {
+                        selectedDietariesInclude.push(value);
+                    }
+                }
+            });
+        });
+
+        // Handle dietary icon clicks for EXCLUDE section
+        document.querySelectorAll('#dietary-icons-exclude .icon-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const value = this.dataset.dietary;
+                // Toggle this dietary exclusion on/off
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    selectedDietariesExclude = selectedDietariesExclude.filter(d => d !== value);
+                } else {
+                    this.classList.add('selected');
+                    if (!selectedDietariesExclude.includes(value)) {
+                        selectedDietariesExclude.push(value);
                     }
                 }
             });
@@ -1355,12 +1529,25 @@
 
         async function search() {
             const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
-            const dietary = selectedDietaries.length > 0 ? selectedDietaries.join(',') : '';
+            const dietary = selectedDietariesInclude.length > 0 ? selectedDietariesInclude.join(',') : '';
+            const dietaryExclude = selectedDietariesExclude.length > 0 ? selectedDietariesExclude.join(',') : '';
             const day = document.getElementById('day').value.trim();
             const meal = document.getElementById('meal').value.trim();
             const item = document.getElementById('item').value.trim();
 
-            if (!cuisine && !dietary && !day && !meal && !item) {
+            // Check for contradictory selections (same item in both include and exclude)
+            if (selectedDietariesInclude.length > 0 && selectedDietariesExclude.length > 0) {
+                const includeLower = selectedDietariesInclude.map(d => d.toLowerCase());
+                const excludeLower = selectedDietariesExclude.map(d => d.toLowerCase());
+                const contradictions = includeLower.filter(d => excludeLower.includes(d));
+                if (contradictions.length > 0) {
+                    const contradictionText = contradictions.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ');
+                    alert(`Contradictory selection: You selected "${contradictionText}" in both "Show items WITH these" and "Show items WITHOUT these". Please remove it from one section.`);
+                    return;
+                }
+            }
+
+            if (!cuisine && !dietary && !dietaryExclude && !day && !meal && !item) {
                 alert('Please enter a cuisine preference, select a dietary restriction, search for an item, or choose a time filter');
                 return;
             }
@@ -1394,6 +1581,7 @@
                     body: JSON.stringify({
                         cuisine: cuisine || "",
                         dietary: dietary || "",
+                        dietary_exclude: dietaryExclude || "",
                         dietary_mode: dietaryMode || "and",
                         day: day || "",
                         meal: meal || "",
