@@ -1053,62 +1053,42 @@
         /* Now Open Chip - Small button on right */
         .now-open-chip {
             position: fixed;
-            top: 20px;
+            top: 70px;
             right: 20px;
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
+            padding: 6px 12px;
+            border-radius: 6px;
             box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
             z-index: 1000;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             transition: all 0.3s ease;
             border: 2px solid rgba(255, 255, 255, 0.3);
             white-space: nowrap;
-            overflow: hidden;
+            overflow: visible;
             display: none;
+            min-width: 140px;
         }
 
         .now-open-chip.expanded {
-            width: 200px;
-            height: 200px;
-            padding: 16px;
-            border-radius: 12px;
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: auto;
+            min-width: 180px;
+            max-width: 250px;
+            padding: 12px;
+            border-radius: 10px;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 12px;
+            gap: 8px;
             overflow: visible;
+            white-space: normal;
         }
 
-        .now-open-chip.expanded::before {
-            content: '';
-            position: absolute;
-            top: -3px;
-            left: -3px;
-            right: -3px;
-            bottom: -3px;
-            border-radius: 12px;
-            padding: 3px;
-            background: conic-gradient(from 0deg, #10b981 0%, transparent 0%);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            animation: borderRotate 5s linear forwards;
-            z-index: -1;
-        }
-
-        @keyframes borderRotate {
-            0% {
-                background: conic-gradient(from 0deg, #10b981 0%, transparent 0%);
-            }
-            100% {
-                background: conic-gradient(from 0deg, #10b981 100%, transparent 100%);
-            }
-        }
 
         .now-open-chip-content {
             display: none;
@@ -1120,6 +1100,35 @@
             gap: 8px;
             width: 100%;
             flex: 1;
+        }
+
+        .now-open-chip-close {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            line-height: 1;
+            transition: background 0.2s ease;
+            z-index: 10;
+        }
+
+        .now-open-chip.expanded .now-open-chip-close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .now-open-chip-close:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .now-open-chip-count {
@@ -1134,17 +1143,18 @@
         .now-open-chip-list {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
             width: 100%;
-            flex: 1;
+            max-height: 300px;
             overflow-y: auto;
         }
 
         .now-open-chip-item {
             background: rgba(255, 255, 255, 0.2);
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: nowrap;
         }
 
         body.dark-mode .now-open-chip {
@@ -1154,136 +1164,33 @@
 
         @media (max-width: 640px) {
             .now-open-chip {
-                top: 10px;
+                top: 60px;
                 right: 10px;
-                padding: 6px 10px;
-                font-size: 0.7rem;
+                padding: 5px 10px;
+                font-size: 0.65rem;
+                min-width: 120px;
             }
 
             .now-open-chip.expanded {
-                width: 180px;
-                height: 180px;
-                padding: 12px;
-            }
-        }
-
-        .now-open-chip:hover {
-            transform: translateX(-50%) translateY(-2px);
-            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
-        }
-
-        .now-open-chip-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-            flex-wrap: wrap;
-        }
-
-        .now-open-chip-count {
-            background: rgba(255, 255, 255, 0.25);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            white-space: nowrap;
-        }
-
-        .now-open-chip-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .now-open-chip-item {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        .now-open-chip-close {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            font-weight: 700;
-            transition: background 0.2s ease;
-            flex-shrink: 0;
-        }
-
-        .now-open-chip-close:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        body.dark-mode .now-open-chip {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6);
-        }
-
-        /* --- Mobile tweaks --- */
-        @media (max-width: 640px) {
-            .now-open-chip {
-                top: 8px;
-                left: 8px;
-                right: 8px;
-                transform: none;
-                padding: 8px 10px;
-                font-size: 0.7rem;
-                max-width: none;
-                width: calc(100% - 16px);
-                gap: 8px;
-                border-radius: 8px;
-            }
-
-            .now-open-chip:hover {
-                transform: none;
-            }
-
-            .now-open-chip-content {
-                gap: 6px;
-                min-width: 0;
-            }
-
-            .now-open-chip-content > span:first-child {
-                display: none; /* Hide emoji on mobile */
-            }
-
-            .now-open-chip-count {
-                font-size: 0.65rem;
-                padding: 2px 6px;
-                white-space: nowrap;
-            }
-
-            .now-open-chip-list {
-                gap: 3px;
-                flex-wrap: wrap;
+                min-width: 160px;
+                max-width: 200px;
+                padding: 10px;
+                right: 10px;
             }
 
             .now-open-chip-item {
                 font-size: 0.65rem;
-                padding: 2px 6px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 100%;
+                padding: 3px 6px;
             }
 
-            .now-open-chip-close {
-                width: 18px;
-                height: 18px;
-                font-size: 0.8rem;
-                flex-shrink: 0;
+            .now-open-chip-count {
+                font-size: 0.7rem;
+                padding: 2px 6px;
             }
+        }
+
+        .now-open-chip:hover {
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
         }
 
         @media (max-width: 640px) {
@@ -1451,6 +1358,7 @@
             <span class="now-open-chip-count" id="now-open-count">0 Open</span>
             <div class="now-open-chip-list" id="now-open-list"></div>
         </div>
+        <button class="now-open-chip-close" onclick="event.stopPropagation(); toggleOpenChip();" aria-label="Close">×</button>
     </div>
 
     <div class="container">
@@ -1742,12 +1650,12 @@
                 labelEl.style.display = 'none';
                 chipExpanded = true;
                 
-                // Auto-collapse after 5 seconds (border animation completes)
+                // Auto-collapse after 5 seconds
                 chipAutoCollapseTimeout = setTimeout(() => {
                     chip.classList.remove('expanded');
                     labelEl.style.display = 'inline';
                     chipExpanded = false;
-                }, 5000);
+                }, 4000);
             }
         }
 
@@ -2168,8 +2076,7 @@
                 if (data.filters && data.filters.item) filters.push(data.filters.item);
                 if (data.filters && data.filters.day) filters.push(data.filters.day);
                 if (data.filters && data.filters.meal) filters.push(data.filters.meal);
-                const filterText = filters.length > 0 ? filters.join(' + ') : 'your criteria';
-                resultsDiv.innerHTML = `<div class="no-results">No serveries found matching: ${filterText}</div>`;
+                resultsDiv.innerHTML = `<div class="no-results">Sorry, we couldn't find any meals.</div>`;
                 return;
             }
 
@@ -2239,16 +2146,31 @@
                         for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                             const allIcons = new Set();
                             // Check if this servery should be highlighted
-                            // For lunch/munch: only highlight if currently in lunch OR munch period
+                            // Only highlight if items are actually currently available AND for today
+                            const firstItem = serveryItems[0];
+                            const today = new Date();
+                            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                            const todayName = dayNames[today.getDay()].toLowerCase();
+                            const isToday = firstItem.day.toLowerCase() === todayName;
+                            
                             let hasCurrentItems = false;
-                            if (currentLocation.includes('LUNCH/MUNCH')) {
-                                const firstItem = serveryItems[0];
-                                const inLunch = serveryItems.some(i => i.is_currently_available && i.meal.toLowerCase() === 'lunch');
-                                const inMunch = isCurrentlyInMunch(serveryName, firstItem.day);
-                                hasCurrentItems = inLunch || inMunch;
-                            } else {
-                                hasCurrentItems = serveryItems.some(i => i.is_currently_available);
+                            // Only highlight if we're viewing today's menu AND servery is actually open
+                            if (isToday) {
+                                // Filter to only items that are currently available (backend sets this correctly)
+                                const currentItems = serveryItems.filter(i => i.is_currently_available === true);
+                                if (currentItems.length > 0) {
+                                    if (currentLocation.includes('LUNCH/MUNCH')) {
+                                        // Check if this specific servery is currently serving lunch OR munch
+                                        const inLunch = currentItems.some(i => i.meal.toLowerCase() === 'lunch');
+                                        const inMunch = currentItems.some(i => i.meal.toLowerCase() === 'munch');
+                                        hasCurrentItems = inLunch || inMunch;
+                                    } else {
+                                        // For other meals, if any item is currently available, highlight
+                                        hasCurrentItems = true;
+                                    }
+                                }
                             }
+                            // If not today, hasCurrentItems stays false - no highlight
                             serveryItems.forEach(i => {
                                 i.icons.forEach(icon => allIcons.add(icon));
                             });
@@ -2358,14 +2280,28 @@
                 for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                     const allIcons = new Set();
                     // Check if this servery should be highlighted (same logic as above)
+                    const firstItem = serveryItems[0];
+                    const today = new Date();
+                    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                    const todayName = dayNames[today.getDay()].toLowerCase();
+                    const isToday = firstItem.day.toLowerCase() === todayName;
+                    
                     let hasCurrentItems = false;
-                    if (currentLocation.includes('LUNCH/MUNCH')) {
-                        const firstItem = serveryItems[0];
-                        const inLunch = serveryItems.some(i => i.is_currently_available && i.meal.toLowerCase() === 'lunch');
-                        const inMunch = isCurrentlyInMunch(serveryName, firstItem.day);
-                        hasCurrentItems = inLunch || inMunch;
-                    } else {
-                        hasCurrentItems = serveryItems.some(i => i.is_currently_available);
+                    // Only highlight if we're viewing today's menu AND servery is actually open
+                    if (isToday) {
+                        // Filter to only items that are currently available
+                        const currentItems = serveryItems.filter(i => i.is_currently_available);
+                        if (currentItems.length > 0) {
+                            if (currentLocation.includes('LUNCH/MUNCH')) {
+                                // Check if this specific servery is currently serving lunch OR munch
+                                const inLunch = currentItems.some(i => i.meal.toLowerCase() === 'lunch');
+                                const inMunch = currentItems.some(i => i.meal.toLowerCase() === 'munch');
+                                hasCurrentItems = inLunch || inMunch;
+                            } else {
+                                // For other meals, if any item is currently available, highlight
+                                hasCurrentItems = true;
+                            }
+                        }
                     }
                     serveryItems.forEach(i => {
                         i.icons.forEach(icon => allIcons.add(icon));
