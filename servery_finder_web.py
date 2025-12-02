@@ -798,6 +798,29 @@ async def get_currently_open():
     })
 
 
+@app.get("/api/schedule")
+async def get_schedule():
+    """API endpoint for getting the full dining schedule"""
+    # Convert DINING_SCHEDULE to a format the frontend can use
+    # Convert time objects to strings in HH:MM format
+    schedule_data = {}
+    for servery_name, servery_schedule in DINING_SCHEDULE.items():
+        schedule_data[servery_name] = {}
+        for day_num, meals in servery_schedule.items():
+            schedule_data[servery_name][day_num] = [
+                {
+                    'meal_type': meal_type,
+                    'start_time': f"{start_time.hour:02d}:{start_time.minute:02d}",
+                    'end_time': f"{end_time.hour:02d}:{end_time.minute:02d}"
+                }
+                for meal_type, start_time, end_time in meals
+            ]
+    
+    return JSONResponse(content={
+        'schedule': schedule_data
+    })
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Main page"""

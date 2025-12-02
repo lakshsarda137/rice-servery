@@ -737,17 +737,6 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
-        .item-group.currently-open {
-            border: 2px solid #10b981;
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
-            background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
-        }
-
-        body.dark-mode .item-group.currently-open {
-            border-color: #10b981;
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-            background: linear-gradient(135deg, #064e3b 0%, #1e293b 100%);
-        }
 
         .item-group-title {
             font-weight: 700;
@@ -769,14 +758,40 @@
             font-weight: 800;
         }
 
-        .item-group.currently-open .item-group-title {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border-bottom-color: #10b981;
+        .item-group-title.past-meal {
+            opacity: 0.6;
+            color: #94a3b8;
         }
 
-        .item-group.currently-open .item-group-title::before {
-            content: "🟢 NOW OPEN - ";
+        body.dark-mode .item-group-title.past-meal {
+            opacity: 0.5;
+            color: #64748b;
+        }
+
+        .past-meal-badge {
+            display: inline-block;
+            background: #94a3b8;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        body.dark-mode .past-meal-badge {
+            background: #64748b;
+            color: #e2e8f0;
+        }
+
+        .past-meal-group {
+            opacity: 0.7;
+        }
+
+        body.dark-mode .past-meal-group {
+            opacity: 0.6;
         }
 
         .item-group-content {
@@ -827,22 +842,6 @@
             border-bottom-color: #475569;
         }
 
-        .menu-item.currently-available {
-            background: linear-gradient(to right, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
-            border-left: 4px solid #10b981;
-            padding-left: 20px;
-            margin-left: -24px;
-            margin-right: -24px;
-            padding-right: 24px;
-        }
-
-        body.dark-mode .menu-item.currently-available {
-            background: linear-gradient(to right, rgba(16, 185, 129, 0.25) 0%, transparent 100%);
-        }
-
-        body.dark-mode .menu-item.currently-available:hover {
-            background: linear-gradient(to right, rgba(16, 185, 129, 0.35) 0%, transparent 100%);
-        }
 
         .menu-item:last-child {
             border-bottom: none;
@@ -891,6 +890,31 @@
             color: #60a5fa;
             font-weight: 800;
             border-bottom-color: #10b981;
+        }
+
+        .servery-name.servery-name-open {
+            color: #10b981 !important;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+            padding: 4px 12px;
+            border-radius: 6px;
+            border-bottom: 2px solid #10b981 !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+            animation: pulse-open 2s ease-in-out infinite;
+        }
+
+        body.dark-mode .servery-name.servery-name-open {
+            color: #34d399 !important;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.1) 100%);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+        }
+
+        @keyframes pulse-open {
+            0%, 100% {
+                box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+            }
+            50% {
+                box-shadow: 0 2px 12px rgba(16, 185, 129, 0.4);
+            }
         }
 
         .menu-items-list {
@@ -1682,6 +1706,9 @@
         // Load time immediately when page loads
         loadCurrentTime();
 
+        // Update time every minute
+        setInterval(loadCurrentTime, 60000);
+
         let selectedDietariesInclude = []; // Items that MUST contain these
         let selectedDietariesExclude = []; // Items that MUST NOT contain these
         let dietaryMode = 'and'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
@@ -2020,17 +2047,26 @@
             }
         }
 
-        // Helper: Check if servery has munch on a given day
-        // Based on DINING_SCHEDULE from backend
-        const SERVERY_MUNCH_SCHEDULE = {
-            'south': [0, 1, 2, 3, 4, 5], // Mon-Fri, Sat
-            'west': [0, 1, 2, 3, 4, 5], // Mon-Fri, Sat
-            'north': [6], // Sun only
-            'seibel': [6], // Sun only
-            'baker': [] // No munch
-        };
+        // Global schedule data loaded from backend
+        let DINING_SCHEDULE_DATA = null;
 
+        // Load schedule data from backend
+        async function loadScheduleData() {
+            try {
+                const response = await fetch('/api/schedule');
+                const data = await response.json();
+                DINING_SCHEDULE_DATA = data.schedule;
+            } catch (error) {
+                console.error('Failed to load schedule data:', error);
+            }
+        }
+
+        // Load schedule on page load
+        loadScheduleData();
+
+        // Helper: Check if servery has munch on a given day
         function serveryHasMunch(serveryName, dayName) {
+            if (!DINING_SCHEDULE_DATA) return false;
             const dayMap = {
                 'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
                 'friday': 4, 'saturday': 5, 'sunday': 6
@@ -2038,32 +2074,43 @@
             const dayNum = dayMap[dayName.toLowerCase()];
             if (dayNum === undefined) return false;
             const serveryLower = serveryName.toLowerCase();
-            return SERVERY_MUNCH_SCHEDULE[serveryLower] && SERVERY_MUNCH_SCHEDULE[serveryLower].includes(dayNum);
+            const serverySchedule = DINING_SCHEDULE_DATA[serveryLower];
+            if (!serverySchedule || !serverySchedule[dayNum]) return false;
+            return serverySchedule[dayNum].some(meal => meal.meal_type === 'munch');
         }
 
-        // Helper: Check if current time is in munch period for a servery
-        function isCurrentlyInMunch(serveryName, dayName) {
-            if (!serveryHasMunch(serveryName, dayName)) return false;
-            // Check if we're in munch time (2-4pm weekdays, 3-5pm weekends for most)
-            const now = new Date();
-            const hour = now.getHours();
-            const day = now.getDay(); // 0=Sunday, 6=Saturday
+        // Helper: Get servery-specific meal time range
+        function getServeryMealTimeRange(serveryName, dayName, mealType) {
+            if (!DINING_SCHEDULE_DATA) return null;
+            const dayMap = {
+                'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                'friday': 4, 'saturday': 5, 'sunday': 6
+            };
+            const dayNum = dayMap[dayName.toLowerCase()];
+            if (dayNum === undefined) return null;
             const serveryLower = serveryName.toLowerCase();
+            const serverySchedule = DINING_SCHEDULE_DATA[serveryLower];
+            if (!serverySchedule || !serverySchedule[dayNum]) return null;
             
-            // Weekdays (Mon-Fri): munch is 2-4pm (14:00-16:00)
-            if (day >= 1 && day <= 5) {
-                if ((serveryLower === 'south' || serveryLower === 'west') && hour >= 14 && hour < 16) {
-                    return true;
-                }
-            }
-            // Weekends: munch is 3-5pm (15:00-17:00)
-            if (day === 0 || day === 6) {
-                if (hour >= 15 && hour < 17) {
-                    return true;
-                }
-            }
-            return false;
+            // Find the meal in the schedule
+            const meal = serverySchedule[dayNum].find(m => {
+                // Normalize meal types (late_night -> dinner, extended_dinner -> dinner)
+                const normalizedMeal = m.meal_type === 'late_night' || m.meal_type === 'extended_dinner' ? 'dinner' : m.meal_type;
+                return normalizedMeal === mealType.toLowerCase();
+            });
+            
+            if (!meal) return null;
+            
+            // Parse time string "HH:MM" to minutes since midnight
+            const [startHour, startMin] = meal.start_time.split(':').map(Number);
+            const [endHour, endMin] = meal.end_time.split(':').map(Number);
+            
+            return {
+                start: startHour * 60 + startMin,
+                end: endHour * 60 + endMin
+            };
         }
+
 
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
@@ -2083,6 +2130,9 @@
             // Day and meal order for chronological sorting
             const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
             const MEAL_ORDER = ['breakfast', 'lunch', 'munch', 'dinner'];
+            
+            // Get selected day filter (if any)
+            const selectedDay = data.filters && data.filters.day ? data.filters.day.toLowerCase() : null;
 
             // Collect all items from all serveries with their servery info
             const allItems = [];
@@ -2092,6 +2142,24 @@
                 }
                 serveryData.items.forEach(item => {
                     if (item && item.day && item.meal) {
+                        const mealType = item.meal.toLowerCase();
+                        
+                        // If this is a lunch item from a servery that has munch, also add it as a munch item
+                        // (since munch uses the same menu as lunch, per user's note)
+                        if (mealType === 'lunch' && serveryHasMunch(serveryName, item.day)) {
+                            // Add as munch item (separate time slot)
+                            allItems.push({
+                                name: item.name,
+                                icons: item.icons || [],
+                                matchedCuisines: item.matched_cuisines || [],
+                                day: item.day,
+                                meal: 'munch', // Show in munch time slot
+                                servery: serveryName,
+                                is_currently_available: item.is_currently_available || false
+                            });
+                        }
+                        
+                        // Always add the original item (lunch items go to lunch slot, munch items go to munch slot)
                         allItems.push({
                             name: item.name,
                             icons: item.icons || [],
@@ -2105,16 +2173,155 @@
                 });
             }
 
-            // Sort chronologically: Monday breakfast -> Sunday dinner
-            allItems.sort((a, b) => {
-                const dayA = DAY_ORDER.indexOf(a.day.toLowerCase());
-                const dayB = DAY_ORDER.indexOf(b.day.toLowerCase());
-                if (dayA !== dayB) {
-                    return dayA - dayB;
+            // Smart sorting: current/upcoming first, then future, then past
+            const now = new Date();
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const todayName = dayNames[now.getDay()].toLowerCase();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTime = currentHour * 60 + currentMinute; // minutes since midnight
+            
+            // Helper to get meal start and end times in minutes
+            function getMealTimeRange(mealType) {
+                const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+                const mealRanges = {
+                    'breakfast': { start: 7 * 60 + 30, end: 10 * 60 },  // 7:30 AM - 10:00 AM
+                    'lunch': { start: 11 * 60 + 30, end: 14 * 60 },      // 11:30 AM - 2:00 PM
+                    'munch': { 
+                        start: isWeekend ? 15 * 60 : 14 * 60,            // 3:00 PM weekends, 2:00 PM weekdays
+                        end: isWeekend ? 17 * 60 : 16 * 60               // 5:00 PM weekends, 4:00 PM weekdays
+                    },
+                    'dinner': { start: 17 * 60, end: 21 * 60 }          // 5:00 PM - 9:00 PM
+                };
+                return mealRanges[mealType.toLowerCase()] || { start: 0, end: 0 };
+            }
+            
+            // Helper to check if a meal time slot has passed
+            function hasMealPassed(dayName, mealType) {
+                if (dayName.toLowerCase() !== todayName) {
+                    // For other days, compare day order
+                    const dayIdx = DAY_ORDER.indexOf(dayName.toLowerCase());
+                    const todayIdx = DAY_ORDER.indexOf(todayName);
+                    return dayIdx < todayIdx;
                 }
-                const mealA = MEAL_ORDER.indexOf(a.meal.toLowerCase());
-                const mealB = MEAL_ORDER.indexOf(b.meal.toLowerCase());
-                return mealA - mealB;
+                // Same day - check if meal time has passed
+                const mealTypeLower = mealType.toLowerCase();
+                const mealRange = getMealTimeRange(mealType);
+                
+                // Special case: lunch ends at 2pm, but if we're in munch time, lunch has passed
+                // (even though lunch items might show during munch, the lunch meal period itself has passed)
+                if (mealTypeLower === 'lunch') {
+                    // Lunch ends at 2pm (14:00), so if it's past 2pm, lunch has passed
+                    return currentTime > mealRange.end;
+                }
+                
+                return currentTime > mealRange.end;
+            }
+            
+            // Helper to check if a meal is currently happening (generic check, not servery-specific)
+            function isMealCurrent(dayName, mealType) {
+                if (dayName.toLowerCase() !== todayName) return false;
+                
+                const mealTypeLower = mealType.toLowerCase();
+                
+                // Special handling for lunch - check if we're in lunch OR munch time
+                // (since lunch items can be shown during munch)
+                if (mealTypeLower === 'lunch') {
+                    const lunchRange = getMealTimeRange('lunch');
+                    const munchRange = getMealTimeRange('munch');
+                    return (currentTime >= lunchRange.start && currentTime <= lunchRange.end) ||
+                           (currentTime >= munchRange.start && currentTime <= munchRange.end);
+                }
+                
+                // For munch, check munch time range
+                if (mealTypeLower === 'munch') {
+                    const munchRange = getMealTimeRange('munch');
+                    return currentTime >= munchRange.start && currentTime <= munchRange.end;
+                }
+                
+                // For other meals, check their specific time range
+                const mealRange = getMealTimeRange(mealType);
+                return currentTime >= mealRange.start && currentTime <= mealRange.end;
+            }
+            
+            // Helper to check if a servery is currently open for a specific meal
+            // Uses actual servery-specific schedule data
+            function isServeryOpen(serveryName, dayName, mealType) {
+                if (dayName.toLowerCase() !== todayName) return false;
+                
+                // Get servery-specific meal time range
+                const mealRange = getServeryMealTimeRange(serveryName, dayName, mealType);
+                if (!mealRange) return false;
+                
+                // Check if current time is within this servery's specific meal time
+                return currentTime >= mealRange.start && currentTime <= mealRange.end;
+            }
+            
+            allItems.sort((a, b) => {
+                const dayA = a.day.toLowerCase();
+                const dayB = b.day.toLowerCase();
+                const mealA = a.meal.toLowerCase();
+                const mealB = b.meal.toLowerCase();
+                
+                // If specific day is selected, just sort by meal order for that day
+                if (selectedDay) {
+                    if (dayA !== selectedDay && dayB !== selectedDay) {
+                        // Both not selected day - maintain relative order
+                        const dayIdxA = DAY_ORDER.indexOf(dayA);
+                        const dayIdxB = DAY_ORDER.indexOf(dayB);
+                        if (dayIdxA !== dayIdxB) return dayIdxA - dayIdxB;
+                    } else if (dayA === selectedDay && dayB !== selectedDay) {
+                        return -1; // Selected day comes first
+                    } else if (dayA !== selectedDay && dayB === selectedDay) {
+                        return 1; // Selected day comes first
+                    } else {
+                        // Both selected day - sort by meal
+                        const mealIdxA = MEAL_ORDER.indexOf(mealA);
+                        const mealIdxB = MEAL_ORDER.indexOf(mealB);
+                        return mealIdxA - mealIdxB;
+                    }
+                }
+                
+                // No day filter - smart sorting: current/upcoming first
+                const currentA = isMealCurrent(dayA, mealA);
+                const currentB = isMealCurrent(dayB, mealB);
+                const passedA = hasMealPassed(dayA, mealA);
+                const passedB = hasMealPassed(dayB, mealB);
+                
+                // Past meals ALWAYS go to the end (lowest priority)
+                if (passedA && !passedB) return 1;  // A is past, B is not - A goes after B
+                if (!passedA && passedB) return -1; // B is past, A is not - B goes after A (A comes first)
+                
+                // Currently happening meals come first (after we've filtered out past meals)
+                if (currentA && !currentB) return -1;
+                if (!currentA && currentB) return 1;
+                
+                // If both are current, prioritize munch over lunch (munch is more specific)
+                if (currentA && currentB) {
+                    if (mealA === 'munch' && mealB === 'lunch') return -1;
+                    if (mealA === 'lunch' && mealB === 'munch') return 1;
+                    // If both same type or neither is munch/lunch, sort by meal order
+                    const mealIdxA = MEAL_ORDER.indexOf(mealA);
+                    const mealIdxB = MEAL_ORDER.indexOf(mealB);
+                    return mealIdxA - mealIdxB;
+                }
+                
+                // Both are upcoming (not current, not passed) - they should come after current but before past
+                // This is already handled by the chronological sort below
+                
+                // If both are upcoming (not current, not passed), sort chronologically
+                // If both are past, sort chronologically
+                const dayIdxA = DAY_ORDER.indexOf(dayA);
+                const dayIdxB = DAY_ORDER.indexOf(dayB);
+                if (dayIdxA !== dayIdxB) {
+                    // Different days - chronological order
+                    return dayIdxA - dayIdxB;
+                }
+                
+                // Same day - sort by meal
+                const mealIdxA = MEAL_ORDER.indexOf(mealA);
+                const mealIdxB = MEAL_ORDER.indexOf(mealB);
+                return mealIdxA - mealIdxB;
             });
 
             let html = '';
@@ -2123,19 +2330,8 @@
 
             // Display items in chronological order, grouping by time slot and servery
             allItems.forEach((item, index) => {
-                // Check if this is lunch and if any servery in this time slot has munch
-                let mealDisplay = item.meal.toUpperCase();
-                if (item.meal.toLowerCase() === 'lunch') {
-                    // Check all items in this time slot to see if any servery has munch
-                    const timeSlotItems = allItems.filter(i => 
-                        i.day.toLowerCase() === item.day.toLowerCase() && 
-                        i.meal.toLowerCase() === 'lunch'
-                    );
-                    const hasMunchServery = timeSlotItems.some(i => serveryHasMunch(i.servery, i.day));
-                    if (hasMunchServery) {
-                        mealDisplay = 'LUNCH/MUNCH';
-                    }
-                }
+                // Show lunch and munch as separate time slots (no merging)
+                const mealDisplay = item.meal.toUpperCase();
                 const location = `${item.day.toUpperCase()} ${mealDisplay}`;
                 
                 // Start new time slot group if needed
@@ -2145,40 +2341,18 @@
                         // Display all items from previous time slot, grouped by servery
                         for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                             const allIcons = new Set();
-                            // Check if this servery should be highlighted
-                            // Only highlight if items are actually currently available AND for today
-                            const firstItem = serveryItems[0];
-                            const today = new Date();
-                            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                            const todayName = dayNames[today.getDay()].toLowerCase();
-                            const isToday = firstItem.day.toLowerCase() === todayName;
-                            
-                            let hasCurrentItems = false;
-                            // Only highlight if we're viewing today's menu AND servery is actually open
-                            if (isToday) {
-                                // Filter to only items that are currently available (backend sets this correctly)
-                                const currentItems = serveryItems.filter(i => i.is_currently_available === true);
-                                if (currentItems.length > 0) {
-                                    if (currentLocation.includes('LUNCH/MUNCH')) {
-                                        // Check if this specific servery is currently serving lunch OR munch
-                                        const inLunch = currentItems.some(i => i.meal.toLowerCase() === 'lunch');
-                                        const inMunch = currentItems.some(i => i.meal.toLowerCase() === 'munch');
-                                        hasCurrentItems = inLunch || inMunch;
-                                    } else {
-                                        // For other meals, if any item is currently available, highlight
-                                        hasCurrentItems = true;
-                                    }
-                                }
-                            }
-                            // If not today, hasCurrentItems stays false - no highlight
                             serveryItems.forEach(i => {
                                 i.icons.forEach(icon => allIcons.add(icon));
                             });
                             
-                            const itemClass = hasCurrentItems ? 'menu-item currently-available' : 'menu-item';
-                            html += `<div class="${itemClass}">
+                            // Check if this servery is currently open for this meal
+                            const firstItem = serveryItems[0];
+                            const isOpen = isServeryOpen(serveryName, firstItem.day, firstItem.meal);
+                            const serveryNameClass = isOpen ? 'servery-name-open' : '';
+                            
+                            html += `<div class="menu-item">
                                 <span class="menu-item-name">
-                                    <strong>${serveryName.toUpperCase()}:</strong>
+                                    <strong class="servery-name ${serveryNameClass}">${serveryName.toUpperCase()}:</strong>
                                     <ul class="menu-items-list">`;
 
                             // Render each item as its own line to avoid awkward comma wrapping on mobile
@@ -2236,34 +2410,14 @@
                         itemsByServery = {};
                     }
                     
-                    // Check if this time slot has any currently available items
-                    // For lunch/munch, check both lunch and munch periods
-                    const timeSlotItems = allItems.filter(i => {
-                        const iMeal = i.meal.toLowerCase();
-                        const iDay = i.day.toLowerCase();
-                        if (location.includes('LUNCH/MUNCH')) {
-                            return iMeal === 'lunch' && iDay === item.day.toLowerCase();
-                        }
-                        return `${i.day.toUpperCase()} ${i.meal.toUpperCase()}` === location;
-                    });
-                    let hasCurrentInSlot = false;
-                    if (location.includes('LUNCH/MUNCH')) {
-                        const dayName = item.day.toLowerCase();
-                        const lunchItems = timeSlotItems.filter(i => i.meal.toLowerCase() === 'lunch');
-                        const inLunch = lunchItems.some(i => i.is_currently_available);
-                        // Check if any servery with munch is currently in munch period
-                        const inMunch = timeSlotItems.some(i => 
-                            serveryHasMunch(i.servery, dayName) && isCurrentlyInMunch(i.servery, dayName)
-                        );
-                        hasCurrentInSlot = inLunch || inMunch;
-                    } else {
-                        hasCurrentInSlot = timeSlotItems.some(i => i.is_currently_available);
-                    }
-                    const groupClass = hasCurrentInSlot ? 'item-group currently-open' : 'item-group';
+                    // Check if this meal has passed
+                    const mealHasPassed = hasMealPassed(item.day.toLowerCase(), item.meal.toLowerCase());
+                    const pastIndicator = mealHasPassed ? '<span class="past-meal-badge">PAST</span>' : '';
+                    const titleClass = mealHasPassed ? 'item-group-title past-meal' : 'item-group-title';
                     
                     // Start new group
-                    html += `<div class="${groupClass}">
-                        <div class="item-group-title">${location}</div>
+                    html += `<div class="item-group ${mealHasPassed ? 'past-meal-group' : ''}">
+                        <div class="${titleClass}">${location} ${pastIndicator}</div>
                         <div class="item-group-content">`;
                     currentLocation = location;
                 }
@@ -2279,38 +2433,18 @@
             if (currentLocation !== '') {
                 for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
                     const allIcons = new Set();
-                    // Check if this servery should be highlighted (same logic as above)
-                    const firstItem = serveryItems[0];
-                    const today = new Date();
-                    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                    const todayName = dayNames[today.getDay()].toLowerCase();
-                    const isToday = firstItem.day.toLowerCase() === todayName;
-                    
-                    let hasCurrentItems = false;
-                    // Only highlight if we're viewing today's menu AND servery is actually open
-                    if (isToday) {
-                        // Filter to only items that are currently available
-                        const currentItems = serveryItems.filter(i => i.is_currently_available);
-                        if (currentItems.length > 0) {
-                            if (currentLocation.includes('LUNCH/MUNCH')) {
-                                // Check if this specific servery is currently serving lunch OR munch
-                                const inLunch = currentItems.some(i => i.meal.toLowerCase() === 'lunch');
-                                const inMunch = currentItems.some(i => i.meal.toLowerCase() === 'munch');
-                                hasCurrentItems = inLunch || inMunch;
-                            } else {
-                                // For other meals, if any item is currently available, highlight
-                                hasCurrentItems = true;
-                            }
-                        }
-                    }
                     serveryItems.forEach(i => {
                         i.icons.forEach(icon => allIcons.add(icon));
                     });
                     
-                    const itemClass = hasCurrentItems ? 'menu-item currently-available' : 'menu-item';
-                    html += `<div class="${itemClass}">
+                    // Check if this servery is currently open for this meal
+                    const firstItem = serveryItems[0];
+                    const isOpen = isServeryOpen(serveryName, firstItem.day, firstItem.meal);
+                    const serveryNameClass = isOpen ? 'servery-name-open' : '';
+                    
+                    html += `<div class="menu-item">
                                <span class="menu-item-name">
-                                   <strong>${serveryName.toUpperCase()}:</strong>
+                                   <strong class="servery-name ${serveryNameClass}">${serveryName.toUpperCase()}:</strong>
                                    <ul class="menu-items-list">`;
 
                            // Render each item as its own line to avoid awkward comma wrapping on mobile
