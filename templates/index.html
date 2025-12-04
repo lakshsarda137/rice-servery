@@ -1462,8 +1462,8 @@
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
                         <span style="font-size: 12px; color: white; font-weight: 600;">If you pick more than one tag, combine using:</span>
                         <div style="display: inline-flex; gap: 6px;">
-                            <button id="dietary-mode-and" type="button" class="dietary-mode-btn active">AND (all tags)</button>
-                            <button id="dietary-mode-or" type="button" class="dietary-mode-btn">OR (any tag)</button>
+                            <button id="dietary-mode-and" type="button" class="dietary-mode-btn">AND (all tags)</button>
+                            <button id="dietary-mode-or" type="button" class="dietary-mode-btn active">OR (any tag)</button>
                         </div>
                     </div>
                     
@@ -1711,7 +1711,7 @@
 
         let selectedDietariesInclude = []; // Items that MUST contain these
         let selectedDietariesExclude = []; // Items that MUST NOT contain these
-        let dietaryMode = 'and'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
+        let dietaryMode = 'or'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
         let selectedCuisines = [];
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
@@ -1984,14 +1984,6 @@
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = `
                 <div class="loading-container">
-                    <div class="search-icon-wrapper">
-                        <div class="search-icon">
-                            <svg viewBox="0 0 24 24">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <path d="m21 21-4.35-4.35"></path>
-                            </svg>
-                        </div>
-                    </div>
                     <div class="loading-dots">
                         <div class="loading-dot"></div>
                         <div class="loading-dot"></div>
@@ -2011,7 +2003,7 @@
                         cuisine: cuisine || "",
                         dietary: dietary || "",
                         dietary_exclude: dietaryExclude || "",
-                        dietary_mode: dietaryMode || "and",
+                        dietary_mode: dietaryMode || "or",
                         day: day || "",
                         meal: meal || "",
                         item: item || ""
