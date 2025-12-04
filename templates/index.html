@@ -580,6 +580,30 @@
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
         }
 
+        .search-btn:disabled {
+            background: #94a3b8 !important;
+            color: #cbd5e0 !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        body.dark-mode .search-btn:disabled {
+            background: #475569 !important;
+            color: #64748b !important;
+        }
+
+        .search-btn:disabled:hover {
+            background: #94a3b8 !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        body.dark-mode .search-btn:disabled:hover {
+            background: #475569 !important;
+        }
+
         .results {
             padding: 40px;
             background: #f8f9fa;
@@ -1582,7 +1606,7 @@
             </div>
 
 
-            <button class="search-btn" onclick="search()">Search Serveries</button>
+            <button class="search-btn" id="search-btn" onclick="search()" disabled>Search Serveries</button>
         </div>
 
         <div class="results" id="results">
@@ -1713,6 +1737,28 @@
         let selectedDietariesExclude = []; // Items that MUST NOT contain these
         let dietaryMode = 'or'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
         let selectedCuisines = [];
+
+        // Function to check if any filter is filled
+        function hasAnyFilter() {
+            const day = document.getElementById('day').value.trim();
+            const meal = document.getElementById('meal').value.trim();
+            const item = document.getElementById('item').value.trim();
+            
+            return selectedCuisines.length > 0 ||
+                   selectedDietariesInclude.length > 0 ||
+                   selectedDietariesExclude.length > 0 ||
+                   day !== '' ||
+                   meal !== '' ||
+                   item !== '';
+        }
+
+        // Function to update search button state
+        function updateSearchButton() {
+            const searchBtn = document.getElementById('search-btn');
+            if (searchBtn) {
+                searchBtn.disabled = !hasAnyFilter();
+            }
+        }
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
 
@@ -1762,6 +1808,7 @@
                         selectedDietariesInclude.push(value);
                     }
                 }
+                updateSearchButton();
             });
         });
 
@@ -1779,6 +1826,7 @@
                         selectedDietariesExclude.push(value);
                     }
                 }
+                updateSearchButton();
             });
         });
 
@@ -1888,12 +1936,14 @@
                 cuisineInput.value = '';
                 cuisineSuggestions.style.display = 'none';
                 cuisineInput.blur(); // Remove focus so suggestions don't reappear
+                updateSearchButton();
             }
         }
 
         function removeCuisine(cuisine) {
             selectedCuisines = selectedCuisines.filter(c => c !== cuisine);
             renderCuisineChips();
+            updateSearchButton();
         }
 
         // Make removeCuisine globally accessible
@@ -1955,6 +2005,14 @@
                 search();
             }
         });
+
+        // Update search button state when day, meal, or item inputs change
+        document.getElementById('day').addEventListener('change', updateSearchButton);
+        document.getElementById('meal').addEventListener('change', updateSearchButton);
+        document.getElementById('item').addEventListener('input', updateSearchButton);
+
+        // Initialize button state on page load
+        updateSearchButton();
 
         async function search() {
             const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
