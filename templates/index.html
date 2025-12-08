@@ -161,6 +161,36 @@
             font-size: 1.2rem;
         }
 
+        .servery-filter-group {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #f59e0b;
+            margin-bottom: 32px;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+        }
+
+        body.dark-mode .servery-filter-group {
+            background: linear-gradient(135deg, #78350f 0%, #1e293b 100%);
+            border-color: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .servery-filter-group label {
+            color: #92400e;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.dark-mode .servery-filter-group label {
+            color: #fcd34d;
+        }
+
+
         .cuisine-filter-group {
             background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
             padding: 20px;
@@ -501,6 +531,73 @@
 
         body.dark-mode .dietary-icons-exclude .icon-option.selected:hover {
             background: #dc2626;
+        }
+
+        .servery-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #f8f9fa;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #4a5568;
+            user-select: none;
+        }
+
+        .servery-option:hover {
+            border-color: #475569;
+            background: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .servery-option.selected {
+            background: #f59e0b;
+            color: white;
+            border-color: #f59e0b;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .servery-option.selected:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .servery-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .servery-option-all {
+            font-weight: 600;
+        }
+
+        body.dark-mode .servery-option {
+            background: #334155;
+            border-color: #475569;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .servery-option:hover {
+            background: #475569;
+            border-color: #64748b;
+        }
+
+        body.dark-mode .servery-option.selected {
+            background: #f59e0b;
+            border-color: #f59e0b;
+            color: white;
+        }
+
+        body.dark-mode .servery-option.selected:hover {
+            background: #d97706;
         }
 
         .item-with-cuisines {
@@ -1369,6 +1466,32 @@
                 font-size: 1rem;
             }
 
+            .servery-filter-group {
+                padding: 16px;
+                margin-bottom: 24px;
+            }
+
+            .servery-filter-group label {
+                font-size: 1rem;
+            }
+
+            .servery-option {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+
+            /* Ensure servery options wrap on mobile */
+            .servery-filter-group > div[style*="display: flex"] {
+                gap: 8px !important;
+            }
+
+            /* Ensure servery chips wrap properly on mobile */
+            #servery-chips {
+                gap: 6px;
+            }
+
             .loading-container {
                 padding: 80px 20px;
                 gap: 24px;
@@ -1442,6 +1565,31 @@
                         </select>
                     </div>
                 </div>
+            </div>
+
+            <div class="filter-group servery-filter-group">
+                <label>Servery Filter</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
+                    <div class="servery-option servery-option-all selected" data-servery="all">
+                        <span>All Serveries</span>
+                    </div>
+                    <div class="servery-option" data-servery="north">
+                        <span>North Servery</span>
+                    </div>
+                    <div class="servery-option" data-servery="south">
+                        <span>South Servery</span>
+                    </div>
+                    <div class="servery-option" data-servery="west">
+                        <span>West Servery</span>
+                    </div>
+                    <div class="servery-option" data-servery="seibel">
+                        <span>Seibel Servery</span>
+                    </div>
+                    <div class="servery-option" data-servery="baker">
+                        <span>Baker College Kitchen</span>
+                    </div>
+                </div>
+                <div id="servery-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
             </div>
 
             <div class="filter-group cuisine-filter-group">
@@ -1606,7 +1754,7 @@
             </div>
 
 
-            <button class="search-btn" id="search-btn" onclick="search()" disabled>Search Serveries</button>
+            <button class="search-btn" id="search-btn" onclick="search()">Search Serveries</button>
         </div>
 
         <div class="results" id="results">
@@ -1737,28 +1885,8 @@
         let selectedDietariesExclude = []; // Items that MUST NOT contain these
         let dietaryMode = 'or'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
         let selectedCuisines = [];
-
-        // Function to check if any filter is filled
-        function hasAnyFilter() {
-            const day = document.getElementById('day').value.trim();
-            const meal = document.getElementById('meal').value.trim();
-            const item = document.getElementById('item').value.trim();
-            
-            return selectedCuisines.length > 0 ||
-                   selectedDietariesInclude.length > 0 ||
-                   selectedDietariesExclude.length > 0 ||
-                   day !== '' ||
-                   meal !== '' ||
-                   item !== '';
-        }
-
-        // Function to update search button state
-        function updateSearchButton() {
-            const searchBtn = document.getElementById('search-btn');
-            if (searchBtn) {
-                searchBtn.disabled = !hasAnyFilter();
-            }
-        }
+        let selectedServeries = []; // Selected individual serveries (if all 5 are selected, auto-switches to "All Serveries")
+        let allServeriesSelected = true; // "All Serveries" is selected by default
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
 
@@ -1808,7 +1936,6 @@
                         selectedDietariesInclude.push(value);
                     }
                 }
-                updateSearchButton();
             });
         });
 
@@ -1826,7 +1953,6 @@
                         selectedDietariesExclude.push(value);
                     }
                 }
-                updateSearchButton();
             });
         });
 
@@ -1936,14 +2062,12 @@
                 cuisineInput.value = '';
                 cuisineSuggestions.style.display = 'none';
                 cuisineInput.blur(); // Remove focus so suggestions don't reappear
-                updateSearchButton();
             }
         }
 
         function removeCuisine(cuisine) {
             selectedCuisines = selectedCuisines.filter(c => c !== cuisine);
             renderCuisineChips();
-            updateSearchButton();
         }
 
         // Make removeCuisine globally accessible
@@ -2006,13 +2130,163 @@
             }
         });
 
-        // Update search button state when day, meal, or item inputs change
-        document.getElementById('day').addEventListener('change', updateSearchButton);
-        document.getElementById('meal').addEventListener('change', updateSearchButton);
-        document.getElementById('item').addEventListener('input', updateSearchButton);
+        // Servery selection functionality
+        const serveryChips = document.getElementById('servery-chips');
+        const SERVERY_NAMES = {
+            'north': 'North Servery',
+            'south': 'South Servery',
+            'west': 'West Servery',
+            'seibel': 'Seibel Servery',
+            'baker': 'Baker College Kitchen'
+        };
+        const SERVERY_COLOR_MAP = {
+            'all': '#6b7280',      // Gray for "All Serveries"
+            'north': '#3b82f6',    // Blue
+            'south': '#10b981',    // Green
+            'west': '#8b5cf6',     // Purple
+            'seibel': '#f59e0b',   // Amber
+            'baker': '#ef4444'      // Red
+        };
+        const TOTAL_SERVERIES = 5; // Total number of individual serveries (north, south, west, seibel, baker)
 
-        // Initialize button state on page load
-        updateSearchButton();
+        // Handle servery option clicks
+        document.querySelectorAll('.servery-option').forEach(option => {
+            option.addEventListener('click', function() {
+                if (this.classList.contains('disabled')) {
+                    return;
+                }
+                
+                const serveryValue = this.dataset.servery;
+                
+                if (serveryValue === 'all') {
+                    // Handle "All Serveries" click
+                    if (allServeriesSelected) {
+                        // Already selected, do nothing
+                        return;
+                    } else {
+                        // Select "All Serveries" and deselect all individual serveries
+                        allServeriesSelected = true;
+                        selectedServeries = [];
+                        this.classList.add('selected');
+                        // Deselect all individual serveries
+                        document.querySelectorAll('.servery-option:not(.servery-option-all)').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                    }
+                } else {
+                    // Handle individual servery click
+                    if (this.classList.contains('selected')) {
+                        // Deselect individual servery
+                        this.classList.remove('selected');
+                        selectedServeries = selectedServeries.filter(s => s !== serveryValue);
+                        
+                        // If no serveries selected, go back to "All Serveries"
+                        if (selectedServeries.length === 0) {
+                            allServeriesSelected = true;
+                            document.querySelector('.servery-option-all').classList.add('selected');
+                        }
+                    } else {
+                        // Select individual servery
+                        // First, deselect "All Serveries" if it's selected
+                        if (allServeriesSelected) {
+                            allServeriesSelected = false;
+                            document.querySelector('.servery-option-all').classList.remove('selected');
+                        }
+                        
+                        // Select this servery
+                        this.classList.add('selected');
+                        if (!selectedServeries.includes(serveryValue)) {
+                            selectedServeries.push(serveryValue);
+                        }
+                        
+                        // If all 5 serveries are selected, automatically switch to "All Serveries"
+                        if (selectedServeries.length === TOTAL_SERVERIES) {
+                            allServeriesSelected = true;
+                            selectedServeries = [];
+                            document.querySelector('.servery-option-all').classList.add('selected');
+                            document.querySelectorAll('.servery-option:not(.servery-option-all)').forEach(opt => {
+                                opt.classList.remove('selected');
+                            });
+                        }
+                    }
+                }
+                
+                updateServeryOptions();
+                renderServeryChips();
+            });
+        });
+
+        function updateServeryOptions() {
+            const allOption = document.querySelector('.servery-option-all');
+            
+            // Disable "All Serveries" if any individual servery is selected
+            if (allServeriesSelected) {
+                allOption.classList.remove('disabled');
+            } else {
+                allOption.classList.add('disabled');
+            }
+            
+            // Enable/disable individual options
+            // No need to disable since users can select all 5 (which will auto-switch to "All Serveries")
+            document.querySelectorAll('.servery-option:not(.servery-option-all)').forEach(option => {
+                option.classList.remove('disabled');
+            });
+        }
+
+        function renderServeryChips() {
+            if (allServeriesSelected) {
+                // Show "All Serveries" chip
+                const color = SERVERY_COLOR_MAP['all'] || '#6b7280';
+                serveryChips.innerHTML = `<div class="cuisine-chip" style="background:${color};">
+                    All Serveries
+                    <span class="cuisine-chip-remove" onclick="selectAllServeries()">×</span>
+                </div>`;
+            } else if (selectedServeries.length === 0) {
+                serveryChips.innerHTML = '';
+            } else {
+                // Render chips with unique colors for each servery
+                serveryChips.innerHTML = selectedServeries.map(servery => {
+                    const serveryName = SERVERY_NAMES[servery] || servery;
+                    const color = SERVERY_COLOR_MAP[servery] || '#6b7280';
+                    return `<div class="cuisine-chip" style="background:${color};">
+                        ${serveryName}
+                        <span class="cuisine-chip-remove" onclick="removeServery('${servery}')">×</span>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+        function removeServery(servery) {
+            selectedServeries = selectedServeries.filter(s => s !== servery);
+            // Update the visual state of the option
+            document.querySelector(`.servery-option[data-servery="${servery}"]`).classList.remove('selected');
+            
+            // If no serveries selected, go back to "All Serveries"
+            if (selectedServeries.length === 0) {
+                allServeriesSelected = true;
+                document.querySelector('.servery-option-all').classList.add('selected');
+            }
+            
+            updateServeryOptions();
+            renderServeryChips();
+        }
+
+        function selectAllServeries() {
+            // Click the "All Serveries" option programmatically
+            const allOption = document.querySelector('.servery-option-all');
+            if (!allOption.classList.contains('disabled')) {
+                allOption.click();
+            }
+        }
+
+        // Make functions globally accessible
+        window.removeServery = removeServery;
+        window.selectAllServeries = selectAllServeries;
+        
+        // Initialize: render chips on page load
+        updateServeryOptions();
+        renderServeryChips();
+
 
         async function search() {
             const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
@@ -2021,6 +2295,8 @@
             const day = document.getElementById('day').value.trim();
             const meal = document.getElementById('meal').value.trim();
             const item = document.getElementById('item').value.trim();
+            // If "All Serveries" is selected, send empty string (which means all serveries)
+            const servery = allServeriesSelected ? '' : (selectedServeries.length > 0 ? selectedServeries.join(',') : '');
 
             // Check for contradictory selections (same item in both include and exclude)
             if (selectedDietariesInclude.length > 0 && selectedDietariesExclude.length > 0) {
@@ -2032,11 +2308,6 @@
                     alert(`Contradictory selection: You selected "${contradictionText}" in both "Show items WITH these" and "Show items WITHOUT these". Please remove it from one section.`);
                     return;
                 }
-            }
-
-            if (!cuisine && !dietary && !dietaryExclude && !day && !meal && !item) {
-                alert('Please enter a cuisine preference, select a dietary restriction, search for an item, or choose a time filter');
-                return;
             }
 
             const resultsDiv = document.getElementById('results');
@@ -2064,7 +2335,8 @@
                         dietary_mode: dietaryMode || "or",
                         day: day || "",
                         meal: meal || "",
-                        item: item || ""
+                        item: item || "",
+                        servery: servery || ""
                     })
                 });
 

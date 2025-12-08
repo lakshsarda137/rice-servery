@@ -561,7 +561,7 @@ def fuzzy_match(query, text, threshold=0.75):
     return False
 
 
-def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_exclude=None, day_filter=None, meal_filter=None, item_filter=None, dietary_mode: str = "and"):
+def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_exclude=None, day_filter=None, meal_filter=None, item_filter=None, servery_filter=None, dietary_mode: str = "and"):
     """Find serveries matching filters
     
     Args:
@@ -602,7 +602,18 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_ex
                 item_filter = None
                 break
     
-    for servery_name, servery_path in SERVERIES.items():
+    # Filter serveries if servery_filter is specified (can be comma-separated)
+    serveries_to_check = {}
+    if servery_filter:
+        # Parse comma-separated serveries
+        servery_list = [s.strip().lower() for s in servery_filter.split(',') if s.strip()]
+        for servery_name, servery_path in SERVERIES.items():
+            if servery_name.lower() in servery_list:
+                serveries_to_check[servery_name] = servery_path
+    else:
+        serveries_to_check = SERVERIES
+    
+    for servery_name, servery_path in serveries_to_check.items():
         # Use weekly cache so we only hit Rice once per servery per ISO week
         menu = get_weekly_menu(servery_name, servery_path)
         
@@ -743,6 +754,7 @@ class SearchRequest(BaseModel):
     day: Optional[str] = None
     meal: Optional[str] = None
     item: Optional[str] = None
+    servery: Optional[str] = None
 
 
 @app.get("/api/current-time")
@@ -858,6 +870,7 @@ async def search(search_request: SearchRequest):
     day = (search_request.day or "").strip()
     meal = (search_request.meal or "").strip()
     item = (search_request.item or "").strip()
+    servery = (search_request.servery or "").strip()
     
     # Check for contradictory selections (same item in both include and exclude)
     if dietary and dietary_exclude:
@@ -877,28 +890,13 @@ async def search(search_request: SearchRequest):
                         'dietary_exclude': dietary_exclude,
                         'day': day,
                         'meal': meal,
-                        'item': item
+                        'item': item,
+                        'servery': servery
                     }
                 }
             )
     
-    if not cuisine and not dietary and not dietary_exclude and not day and not meal and not item:
-        return JSONResponse(
-            status_code=400,
-            content={
-                'error': 'Please provide at least one filter',
-                'results': {},
-                'filters': {
-                    'cuisine': cuisine,
-                    'dietary': dietary,
-                    'dietary_exclude': dietary_exclude,
-                    'day': day,
-                    'meal': meal,
-                    'item': item
-                }
-            }
-        )
-    
+    # Allow empty filters - if all filters are empty, show all menu items
     results = find_matching_serveries(
         cuisine_filter=cuisine if cuisine else None,
         dietary_filter=dietary if dietary else None,
@@ -906,7 +904,8 @@ async def search(search_request: SearchRequest):
         dietary_mode=dietary_mode,
         day_filter=day if day else None,
         meal_filter=meal if meal else None,
-        item_filter=item if item else None
+        item_filter=item if item else None,
+        servery_filter=servery if servery else None
     )
     
     # Get current time info for frontend
@@ -922,7 +921,8 @@ async def search(search_request: SearchRequest):
             'dietary_exclude': dietary_exclude,
             'day': day,
             'meal': meal,
-            'item': item
+            'item': item,
+            'servery': servery
         },
         'current_time': {
             'day': current_day_name,
