@@ -22,12 +22,14 @@ templates = Jinja2Templates(directory="templates")
 CST = pytz.timezone('America/Chicago')
 
 # Dietary icons mapping
+# Maps lowercase tooltip values from Rice's website to our standardized labels
 DIETARY_ICONS = {
     'vegan': 'Vegan',
     'vegetarian': 'Vegetarian',
     'gluten': 'Gluten',
     'soy': 'Soy',
     'dairy': 'Dairy',
+    'milk': 'Dairy',  # Rice uses "Milk" in tooltips
     'egg': 'Eggs',
     'eggs': 'Eggs',
     'fish': 'Fish',
@@ -188,42 +190,89 @@ MENU_CACHE: Dict[str, Any] = {
 
 
 def extract_icons(icons_html):
-    """Extract dietary icons from HTML"""
+    """Extract dietary icons from HTML
+    
+    Rice's website uses tooltips with data-content attributes.
+    Tooltip values found: Vegan, Vegetarian, Gluten, Soy, Milk, Eggs, Fish, Shellfish, Halal, Sesame
+    """
     icons_found = []
     
     if not icons_html:
         return icons_found
     
-    # Look for tooltip data-content (most reliable)
+    # Look for tooltip data-content (most reliable method)
+    # Pattern: <span class="tooltip" ... data-content="Vegan">
     tooltips = re.findall(r'data-content="([^"]+)"', icons_html, re.IGNORECASE)
+    
     for tooltip in tooltips:
-        tooltip_lower = tooltip.lower().strip()
-        # Direct match
+        tooltip_clean = tooltip.strip()
+        tooltip_lower = tooltip_clean.lower()
+        
+        # Direct match in mapping
         if tooltip_lower in DIETARY_ICONS:
             label = DIETARY_ICONS[tooltip_lower]
             if label not in icons_found:
                 icons_found.append(label)
+            continue
+        
+        # Handle exact matches for common Rice tooltip values
+        # Rice uses: "Vegan", "Vegetarian", "Gluten", "Soy", "Milk", "Eggs", "Fish", "Shellfish", "Halal", "Sesame"
+        tooltip_to_label = {
+            'vegan': 'Vegan',
+            'vegetarian': 'Vegetarian',
+            'gluten': 'Gluten',
+            'soy': 'Soy',
+            'milk': 'Dairy',  # Rice uses "Milk" but we standardize to "Dairy"
+            'egg': 'Eggs',
+            'eggs': 'Eggs',
+            'fish': 'Fish',
+            'shellfish': 'Shellfish',
+            'halal': 'Halal',
+            'sesame': 'Sesame',
+            'peanut': 'Peanuts',
+            'peanuts': 'Peanuts',
+            'tree nut': 'Tree Nuts',
+            'tree nuts': 'Tree Nuts'
+        }
+        
+        if tooltip_lower in tooltip_to_label:
+            label = tooltip_to_label[tooltip_lower]
+            if label not in icons_found:
+                icons_found.append(label)
+            continue
+        
+        # Fallback: partial match against DIETARY_ICONS keys
+        for key, label in DIETARY_ICONS.items():
+            if key in tooltip_lower or tooltip_lower in key:
+                if label not in icons_found:
+                    icons_found.append(label)
+                break
+    
+    # Also check icon classes as fallback (for cases where tooltips might be missing)
+    # Look for class="icons icon-only vegan" or similar
+    icon_class_pattern = r'class="[^"]*icons[^"]*(?:icon-only|icon)[^"]*(vegan|vegetarian|gluten|soy|dairy|milk|egg|eggs|fish|shellfish|peanut|peanuts|tree.?nut|halal|sesame)[^"]*"'
+    class_matches = re.findall(icon_class_pattern, icons_html, re.IGNORECASE)
+    
+    for match in class_matches:
+        match_lower = match.lower()
+        # Map to standardized label
+        if match_lower == 'milk':
+            label = 'Dairy'
+        elif match_lower in ['egg', 'eggs']:
+            label = 'Eggs'
+        elif match_lower in DIETARY_ICONS:
+            label = DIETARY_ICONS[match_lower]
         else:
-            # Partial match
-            for key, label in DIETARY_ICONS.items():
-                if key in tooltip_lower or tooltip_lower in key:
-                    if label not in icons_found:
-                        icons_found.append(label)
-    
-    # Also check icon classes as fallback
-    icon_class_patterns = [
-        r'class="[^"]*(?:icon|vegan|vegetarian|gluten|soy|dairy|egg|fish|shellfish|peanut|tree.?nut|halal|sesame)[^"]*"',
-        r'vegan|vegetarian|gluten|soy|dairy|egg|fish|shellfish|peanut|tree.?nut|halal|sesame'
-    ]
-    
-    for pattern in icon_class_patterns:
-        matches = re.findall(pattern, icons_html, re.IGNORECASE)
-        for match in matches:
-            match_lower = match.lower()
-            for key, label in DIETARY_ICONS.items():
+            # Try to find in DIETARY_ICONS
+            for key, label_val in DIETARY_ICONS.items():
                 if key in match_lower:
-                    if label not in icons_found:
-                        icons_found.append(label)
+                    label = label_val
+                    break
+            else:
+                continue  # Skip if no match found
+        
+        if label not in icons_found:
+            icons_found.append(label)
     
     return icons_found
 
@@ -238,14 +287,13 @@ def _current_week_key() -> str:
 def fetch_menu_with_icons(servery_path: str):
     """Fetch and extract weekly menu with dietary icons for a single servery.
 
-    Note: we append a dummy timestamp query parameter to aggressively bust any
-    upstream caches (Rice/CDN). The in-memory weekly cache ensures we still only
+    Note: We do NOT use a timestamp parameter as it causes Rice's website to return
+    a different/cached menu version. The in-memory weekly cache ensures we still only
     hit Rice once per servery per ISO week from our side.
     """
-    import time
-    # Try with timestamp first, fallback to without if 406
-    url = f"https://dining.rice.edu/{servery_path}?_ts={int(time.time())}"
-    url_no_ts = f"https://dining.rice.edu/{servery_path}"
+    # Don't use timestamp parameter - it causes Rice's website to return different/cached menu
+    # Use the base URL without timestamp to get the current menu
+    url = f"https://dining.rice.edu/{servery_path}"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -284,22 +332,17 @@ def fetch_menu_with_icons(servery_path: str):
                 }
             ]
             
-            # Try both URLs (with and without timestamp)
-            urls_to_try = [url, url_no_ts]
-            
+            # Try with simpler headers
             html = None
-            for url_to_try in urls_to_try:
-                for i, simple_headers in enumerate(header_sets):
-                    try:
-                        req = urllib.request.Request(url_to_try, headers=simple_headers)
-                        with urllib.request.urlopen(req, timeout=10) as response:
-                            html = response.read().decode('utf-8')
-                            print(f"Successfully fetched {servery_path} with {'timestamp' if url_to_try == url else 'no timestamp'} and header set {i+1}")
-                            break
-                    except Exception as e2:
-                        continue
-                if html is not None:
-                    break
+            for i, simple_headers in enumerate(header_sets):
+                try:
+                    req = urllib.request.Request(url, headers=simple_headers)
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        html = response.read().decode('utf-8')
+                        print(f"Successfully fetched {servery_path} with header set {i+1}")
+                        break
+                except Exception as e2:
+                    continue
             
             if html is None:
                 print(f"Error fetching menu for {servery_path} (all retries failed): {e}")
@@ -325,7 +368,8 @@ def fetch_menu_with_icons(servery_path: str):
         if i + 1 < len(day_matches):
             day_end = day_matches[i + 1].start()
         else:
-            day_end = min(day_start + 50000, len(html))
+            # Use full remaining HTML, don't limit to 50000 chars
+            day_end = len(html)
         
         day_section = html[day_start:day_end]
         
@@ -340,11 +384,24 @@ def fetch_menu_with_icons(servery_path: str):
             if j + 1 < len(meal_matches):
                 meal_end = meal_matches[j + 1].start()
             else:
+                # Look for next day header
                 next_day_match = re.search(r'<h4 class="static-date">', day_section[meal_start:])
                 if next_day_match:
                     meal_end = meal_start + next_day_match.start()
                 else:
-                    meal_end = len(day_section)
+                    # If no next day, find where the menu items actually end
+                    # Look for the last menu item and stop there
+                    last_mitem_match = list(re.finditer(r'<a class="mitem"', day_section[meal_start:], re.IGNORECASE))
+                    if last_mitem_match:
+                        # Find the closing </a> for the last menu item
+                        last_start = meal_start + last_mitem_match[-1].start()
+                        last_a_end = day_section[last_start:].find('</a>')
+                        if last_a_end != -1:
+                            meal_end = last_start + last_a_end + 4
+                        else:
+                            meal_end = len(day_section)
+                    else:
+                        meal_end = len(day_section)
             
             meal_section = day_section[meal_start:meal_end]
             
@@ -369,6 +426,8 @@ def fetch_menu_with_icons(servery_path: str):
                 item = re.sub(r'&nbsp;', ' ', item)
                 item = re.sub(r'&#039;', "'", item)
                 item = re.sub(r'&quot;', '"', item)
+                # Normalize all whitespace (tabs, newlines, multiple spaces) to single spaces
+                item = re.sub(r'\s+', ' ', item)
                 item = item.strip()
                 
                 if (3 < len(item) < 150 and 
@@ -378,9 +437,11 @@ def fetch_menu_with_icons(servery_path: str):
                     icons = extract_icons(icons_html)
                     
                     # Check if item already exists (avoid duplicates)
+                    # Use case-insensitive comparison to catch duplicates like "Vegetable of the Day"
                     existing = None
+                    item_lower = item.lower().strip()
                     for existing_item in menu[day_name][meal_name]:
-                        if existing_item['name'] == item:
+                        if existing_item['name'].lower().strip() == item_lower:
                             existing = existing_item
                             break
                     
@@ -405,6 +466,9 @@ def fetch_menu_with_icons(servery_path: str):
                     item = re.sub(r'&amp;', '&', item)
                     item = re.sub(r'&nbsp;', ' ', item)
                     item = re.sub(r'&#039;', "'", item)
+                    item = re.sub(r'&quot;', '"', item)
+                    # Normalize all whitespace (tabs, newlines, multiple spaces) to single spaces
+                    item = re.sub(r'\s+', ' ', item)
                     item = item.strip()
                     
                     if (3 < len(item) < 150 and 
