@@ -94,7 +94,7 @@ SERVERIES = {
     'baker': 'baker-college-kitchen'
 }
 
-# Dining schedule (CST) - based on Fall Dining Schedule
+# Dining schedule (CST) - based on posted servery hours
 # Format: {servery: {day_of_week: [(meal_type, start_time, end_time), ...]}}
 # day_of_week: 0=Monday, 6=Sunday
 # Meal types: breakfast, snack_period, lunch, munch, extended_dinner, dinner, late_night
@@ -104,7 +104,8 @@ DINING_SCHEDULE = {
         1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Tue
         2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Wed
         3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (closed for dinner)
+        5: [],  # Sat (closed)
         6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
     },
     'north': {
@@ -112,7 +113,8 @@ DINING_SCHEDULE = {
         1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Tue
         2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Wed
         3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(21, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (no dinner)
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('snack_period', dt_time(10, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0))],  # Fri (closed for dinner)
+        5: [],  # Sat (closed)
         6: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sun
     },
     'south': {
@@ -122,14 +124,16 @@ DINING_SCHEDULE = {
         3: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Thu
         4: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('extended_dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri
         5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
+        6: [],  # Sun (closed)
     },
     'west': {
-        0: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Mon
-        1: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Tue
-        2: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Wed
-        3: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Thu
-        4: [('breakfast', dt_time(7, 30), dt_time(10, 0)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri (no late night, extended dinner)
+        0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Mon
+        1: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Tue
+        2: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Wed
+        3: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 0)), ('late_night', dt_time(21, 0), dt_time(23, 0))],  # Thu
+        4: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(13, 30)), ('munch', dt_time(14, 0), dt_time(16, 0)), ('snack_period', dt_time(16, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(21, 0))],  # Fri
         5: [('breakfast', dt_time(8, 0), dt_time(11, 0)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('munch', dt_time(15, 0), dt_time(17, 0)), ('dinner', dt_time(17, 30), dt_time(20, 30))],  # Sat
+        6: [],  # Sun (closed)
     },
     'baker': {
         0: [('breakfast', dt_time(7, 30), dt_time(10, 30)), ('lunch', dt_time(11, 30), dt_time(14, 0)), ('dinner', dt_time(17, 0), dt_time(20, 0))],  # Mon
@@ -176,8 +180,8 @@ def get_current_meal_and_status(servery_name: str, day_name: str) -> Tuple[Optio
     
     # Check which meal period we're in
     for meal_type, start_time, end_time in day_schedule:
-        # Normalize late_night to dinner for matching
-        meal_to_check = 'dinner' if meal_type == 'late_night' else meal_type
+        # Normalize extended dinner / late night to dinner for matching
+        meal_to_check = 'dinner' if meal_type in ('late_night', 'extended_dinner') else meal_type
         if start_time <= current_time <= end_time:
             return meal_to_check, True
     
