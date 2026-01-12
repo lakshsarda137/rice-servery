@@ -5,6 +5,7 @@ Enhanced Servery Finder with Icon Extraction and Web Interface
 import urllib.request
 import urllib.error
 import re
+import os
 from collections import defaultdict
 from difflib import SequenceMatcher
 from datetime import datetime, timezone, time as dt_time
@@ -14,6 +15,13 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import pytz
+
+try:
+    # Used to fetch pages that return 406/403 to basic HTTP clients.
+    # `curl_cffi` can impersonate a real browser TLS fingerprint.
+    from curl_cffi import requests as curl_requests  # type: ignore
+except Exception:
+    curl_requests = None  # type: ignore
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -284,6 +292,164 @@ def _current_week_key() -> str:
     return f"{year}-W{week:02d}"
 
 
+def _clean_html_text(s: str) -> str:
+    s = re.sub(r"<[^>]+>", "", s)
+    s = s.replace("&amp;", "&").replace("&nbsp;", " ").replace("&#039;", "'").replace("&quot;", '"')
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+_WEEKLY_STATION_BLOCK_MAP = {
+    # These Drupal view blocks correspond to (day, meal). The page's own JS toggles
+    # visibility by weekday using these IDs.
+    #
+    # Blocks 2-8: Mon..Sun Lunch
+    # Blocks 10-16: Mon..Sun Dinner
+    2: ("monday", "lunch"),
+    3: ("tuesday", "lunch"),
+    4: ("wednesday", "lunch"),
+    5: ("thursday", "lunch"),
+    6: ("friday", "lunch"),
+    7: ("saturday", "lunch"),
+    8: ("sunday", "lunch"),
+    10: ("monday", "dinner"),
+    11: ("tuesday", "dinner"),
+    12: ("wednesday", "dinner"),
+    13: ("thursday", "dinner"),
+    14: ("friday", "dinner"),
+    15: ("saturday", "dinner"),
+    16: ("sunday", "dinner"),
+}
+
+
+def _slice_station_block(html: str, block_num: int) -> Optional[str]:
+    block_id = f'block-views-block-weekly-menu-by-stations-block-{block_num}'
+    start = html.find(f'id="{block_id}"')
+    if start == -1:
+        start = html.find(f"id=\"{block_id}\"")
+    if start == -1:
+        return None
+
+    # End at the next stations-block container OR when we hit the next top-level weekly menu section.
+    search_tail = html[start + 1 :]
+    candidates = []
+
+    m_next_block = re.search(r'id="block-views-block-weekly-menu-by-stations-block-\d+"', search_tail, re.IGNORECASE)
+    if m_next_block:
+        candidates.append(start + 1 + m_next_block.start())
+
+    for marker in [
+        'id="block-weeklylunch"',
+        'id="block-weeklymenuswitchingcode"',
+        'id="block-dailystandarditems"',
+    ]:
+        pos = html.find(marker, start + 1)
+        if pos != -1:
+            candidates.append(pos)
+
+    end = min(candidates) if candidates else len(html)
+    return html[start:end]
+
+
+def _fetch_weekly_menu_by_stations(servery_path: str) -> Dict[str, Dict[str, list]]:
+    """
+    Fetch weekly menu for South/West by parsing the server-rendered Drupal blocks.
+
+    Important: The default page load does NOT include the block contents for basic HTTP clients.
+    However, requesting the page with a non-default dietary filter value causes the server to
+    render the full view HTML (including menu items) in the response. Empirically, this does
+    not actually filter the items in the HTML we receive, but it reliably forces rendering.
+    """
+    if curl_requests is None:
+        print("Error: curl_cffi is not installed; cannot fetch South/West weekly menus reliably.")
+        return {}
+
+    # Force server-side rendering of the weekly menu blocks.
+    #
+    # Important nuance:
+    # - With `field_dietary_restrictions_value=All` (default), the response often omits
+    #   the weekly menu blocks for non-browser clients.
+    # - With a non-default value, the server returns fully rendered HTML, but it may
+    #   filter out items matching that restriction.
+    #
+    # To approximate the true "View Week" (unfiltered) content while reducing the risk
+    # of missing items, we union across the "WITHOUT ..." filters (4-12). Any single
+    # WITHOUT-X filter only excludes items containing X; by unioning multiple, we can
+    # recover those items from another fetch where X is not excluded.
+    #
+    # We stop early if we stop discovering new items.
+    force_values_order = [9, 10, 11, 12, 8, 7, 6, 5, 4]
+    max_no_new_rounds = 2
+
+    menu = defaultdict(lambda: {"breakfast": [], "lunch": [], "munch": [], "dinner": []})
+    block_map = _WEEKLY_STATION_BLOCK_MAP
+
+    seen_by_bucket = defaultdict(set)  # (day, meal) -> {lower_name}
+    consecutive_no_new = 0
+
+    for v in force_values_order:
+        url = f"https://dining.rice.edu/{servery_path}?field_dietary_restrictions_value={v}"
+        try:
+            resp = curl_requests.get(url, impersonate="chrome120", timeout=20)
+            html = resp.text
+        except Exception as e:
+            print(f"Error fetching weekly menu blocks for {servery_path} (force={v}): {e}")
+            continue
+
+        new_this_round = 0
+        for block_num, (day_key, meal_key) in block_map.items():
+            block_html = _slice_station_block(html, block_num)
+            if not block_html:
+                continue
+
+            mitem_pattern = r'<a class="mitem"[^>]*>(.*?)</a>'
+            mitem_matches = re.findall(mitem_pattern, block_html, re.DOTALL | re.IGNORECASE)
+
+            for mitem_html in mitem_matches:
+                name_match = re.search(r'<div class="mname">(.*?)</div>', mitem_html, re.DOTALL | re.IGNORECASE)
+                if not name_match:
+                    continue
+
+                item = _clean_html_text(name_match.group(1))
+                if (3 < len(item) < 150 and not any(skip in item.lower() for skip in ['dietary', 'preference', 'view', 'filter', 'apply', 'kosher meals'])):
+                    item_lower = item.lower().strip()
+                    bucket_key = (day_key, meal_key)
+                    if item_lower in seen_by_bucket[bucket_key]:
+                        # Still allow icon enrichment below by merging into existing entry
+                        pass
+                    else:
+                        seen_by_bucket[bucket_key].add(item_lower)
+                        new_this_round += 1
+
+                    icons = extract_icons(mitem_html)
+
+                    existing = None
+                    for existing_item in menu[day_key][meal_key]:
+                        if existing_item["name"].lower().strip() == item_lower:
+                            existing = existing_item
+                            break
+
+                    if existing:
+                        for icon in icons:
+                            if icon not in existing["icons"]:
+                                existing["icons"].append(icon)
+                    else:
+                        menu[day_key][meal_key].append({"name": item, "icons": icons})
+
+        if new_this_round == 0:
+            consecutive_no_new += 1
+            if consecutive_no_new >= max_no_new_rounds:
+                break
+        else:
+            consecutive_no_new = 0
+
+    # Ensure all days exist in output.
+    for day_key in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]:
+        _ = menu[day_key]
+
+    return dict(menu)
+
+
 def fetch_menu_with_icons(servery_path: str):
     """Fetch and extract weekly menu with dietary icons for a single servery.
 
@@ -291,6 +457,20 @@ def fetch_menu_with_icons(servery_path: str):
     a different/cached menu version. The in-memory weekly cache ensures we still only
     hit Rice once per servery per ISO week from our side.
     """
+    def _menu_total_items(m: Dict[str, Dict[str, list]]) -> int:
+        total = 0
+        for day_meals in (m or {}).values():
+            if not isinstance(day_meals, dict):
+                continue
+            for meal_key in ("breakfast", "lunch", "munch", "dinner"):
+                total += len(day_meals.get(meal_key, []) or [])
+        return total
+
+    # Optional: force Drupal block scraping for all serveries (except Baker).
+    force_drupal = os.getenv("USE_DRUPAL_STATIONS", "").strip().lower() in ("1", "true", "yes", "on")
+    if force_drupal and servery_path != "baker-college-kitchen":
+        return _fetch_weekly_menu_by_stations(servery_path)
+
     # Don't use timestamp parameter - it causes Rice's website to return different/cached menu
     # Use the base URL without timestamp to get the current menu
     url = f"https://dining.rice.edu/{servery_path}"
@@ -478,7 +658,16 @@ def fetch_menu_with_icons(servery_path: str):
                             'icons': []
                         })
     
-    return dict(menu)
+    parsed = dict(menu)
+
+    # Fallback: if the static HTML parser extracted nothing, try the Drupal station blocks.
+    # This is needed for South/West and also makes the approach robust if Rice changes markup.
+    if _menu_total_items(parsed) == 0 and servery_path != "baker-college-kitchen":
+        fallback = _fetch_weekly_menu_by_stations(servery_path)
+        if _menu_total_items(fallback) > 0:
+            return fallback
+
+    return parsed
 
 
 def get_weekly_menu(servery_name: str, servery_path: str):
