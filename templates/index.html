@@ -549,6 +549,8 @@
             user-select: none;
         }
 
+        .servery-option .servery-label-short { display: none; }
+
         .servery-option:hover {
             border-color: #475569;
             background: #f8fafc;
@@ -1588,14 +1590,23 @@
             }
 
             .servery-option {
-                padding: 8px 12px;
-                font-size: 0.85rem;
-                flex: 1 1 auto;
+                padding: 10px 12px;
+                font-size: 0.9rem;
                 min-width: 0;
+                justify-content: center;
+                text-align: center;
+                white-space: nowrap;
             }
 
-            /* Ensure servery options wrap on mobile */
+            /* Short labels on phones so every chip stays one line tall */
+            .servery-option .servery-label-full { display: none; }
+            .servery-option .servery-label-short { display: inline; }
+
+            /* Two equal columns on mobile so every servery chip is the same size
+               (with flex, the last chip alone on a row stretched to full width) */
             .servery-filter-group > div[style*="display: flex"] {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 8px !important;
             }
 
@@ -1683,25 +1694,25 @@
                 <label>Servery Filter</label>
                 <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
                     <div class="servery-option servery-option-all selected" data-servery="all">
-                        <span>All Serveries</span>
+                        <span class="servery-label-full">All Serveries</span><span class="servery-label-short">All</span>
                     </div>
                     <div class="servery-option" data-servery="north">
-                        <span>North Servery</span>
+                        <span class="servery-label-full">North Servery</span><span class="servery-label-short">North</span>
                     </div>
                     <div class="servery-option" data-servery="south">
-                        <span>South Servery</span>
+                        <span class="servery-label-full">South Servery</span><span class="servery-label-short">South</span>
                     </div>
                     <div class="servery-option" data-servery="west">
-                        <span>West Servery</span>
+                        <span class="servery-label-full">West Servery</span><span class="servery-label-short">West</span>
                     </div>
                     <div class="servery-option" data-servery="seibel">
-                        <span>Seibel Servery</span>
+                        <span class="servery-label-full">Seibel Servery</span><span class="servery-label-short">Seibel</span>
                     </div>
                     <div class="servery-option" data-servery="baker">
-                        <span>Baker College Kitchen</span>
+                        <span class="servery-label-full">Baker College Kitchen</span><span class="servery-label-short">Baker</span>
                     </div>
                     <div class="servery-option" data-servery="south main">
-                        <span>South Main Servery</span>
+                        <span class="servery-label-full">South Main Servery</span><span class="servery-label-short">South Main</span>
                     </div>
                 </div>
                 <div id="servery-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
