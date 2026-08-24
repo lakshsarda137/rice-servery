@@ -11,10 +11,18 @@ from difflib import SequenceMatcher
 from datetime import datetime, timezone, time as dt_time
 from typing import Optional, Dict, Any, Tuple
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import pytz
+from io import BytesIO
+from xml.sax.saxutils import escape as xml_escape
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.pagesizes import inch
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -876,6 +884,200 @@ def find_matching_serveries(cuisine_filter=None, dietary_filter=None, dietary_ex
     return results
 
 
+
+# ---------------------------------------------------------------------------
+# PDF export
+# ---------------------------------------------------------------------------
+
+# Phone-friendly page: narrow (half-letter) with large type, so a PDF viewer that
+# fits the page to the screen width still shows comfortably readable text.
+PDF_PAGE_SIZE = (5.5 * inch, 8.5 * inch)
+PDF_MARGIN = 0.45 * inch
+
+PDF_SERVERY_COLORS = {
+    'north': '#2563eb',
+    'south': '#059669',
+    'west': '#7c3aed',
+    'seibel': '#d97706',
+    'baker': '#dc2626',
+    'south main': '#db2777',
+}
+PDF_SERVERY_NAMES = {
+    'north': 'North Servery',
+    'south': 'South Servery',
+    'west': 'West Servery',
+    'seibel': 'Seibel Servery',
+    'baker': 'Baker College Kitchen',
+    'south main': 'South Main Servery',
+}
+PDF_DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+PDF_MEAL_ORDER = ['breakfast', 'lunch', 'munch', 'dinner']
+# Positive dietary labels get a short green tag; everything else is an allergen.
+PDF_DIET_TAGS = {'Vegan': 'VEGAN', 'Vegetarian': 'VEG', 'Halal': 'HALAL'}
+
+
+def _pdf_styles():
+    base = 'Helvetica'
+    bold = 'Helvetica-Bold'
+    return {
+        'title': ParagraphStyle('title', fontName=bold, fontSize=20, leading=24, textColor=colors.HexColor('#0f172a')),
+        'subtitle': ParagraphStyle('subtitle', fontName=base, fontSize=9.5, leading=13, textColor=colors.HexColor('#475569')),
+        'legend': ParagraphStyle('legend', fontName=base, fontSize=8.5, leading=12, textColor=colors.HexColor('#64748b')),
+        'day': ParagraphStyle('day', fontName=bold, fontSize=15, leading=19, textColor=colors.white, alignment=TA_LEFT),
+        'meal': ParagraphStyle('meal', fontName=bold, fontSize=12, leading=15, textColor=colors.HexColor('#0f172a'),
+                               spaceBefore=8, spaceAfter=4),
+        'servery': ParagraphStyle('servery', fontName=bold, fontSize=11, leading=14, textColor=colors.white),
+        'item': ParagraphStyle('item', fontName=base, fontSize=11, leading=14.5, textColor=colors.HexColor('#0f172a')),
+        'tags': ParagraphStyle('tags', fontName=base, fontSize=8, leading=10.5, textColor=colors.HexColor('#64748b')),
+        'empty': ParagraphStyle('empty', fontName=base, fontSize=12, leading=16, textColor=colors.HexColor('#475569')),
+    }
+
+
+def _pdf_item_paragraph(item, styles):
+    """One menu item: bold-ish name, then a small line with diet tags / allergens."""
+    name = xml_escape(item['name'])
+    icons = item.get('icons') or []
+    good = [PDF_DIET_TAGS[i] for i in icons if i in PDF_DIET_TAGS]
+    allergens = [i for i in icons if i not in PDF_DIET_TAGS]
+
+    parts = []
+    for tag in good:
+        parts.append(f'<font color="#059669"><b>{tag}</b></font>')
+    if allergens:
+        parts.append('<font color="#64748b">contains: ' + xml_escape(', '.join(a.lower() for a in allergens)) + '</font>')
+    tag_line = ' &nbsp;·&nbsp; '.join(parts)
+
+    text = name
+    if tag_line:
+        text += f'<br/><font size="8">{tag_line}</font>'
+    return Paragraph(text, styles['item'])
+
+
+def _describe_filters(f: Dict[str, str]) -> str:
+    bits = []
+    if f.get('day'):
+        bits.append(f"Day: {f['day'].title()}")
+    if f.get('meal'):
+        bits.append(f"Meal: {f['meal'].title()}")
+    if f.get('servery'):
+        names = [PDF_SERVERY_NAMES.get(x.strip().lower(), x.strip().title()) for x in f['servery'].split(',') if x.strip()]
+        bits.append("Serveries: " + ', '.join(names))
+    if f.get('cuisine'):
+        bits.append(f"Cuisine: {f['cuisine']}")
+    if f.get('item'):
+        bits.append(f"Item: \"{f['item']}\"")
+    if f.get('dietary'):
+        joiner = ' or ' if (f.get('dietary_mode') or 'and') == 'or' else ' and '
+        bits.append("With: " + joiner.join(x.strip().title() for x in f['dietary'].split(',') if x.strip()))
+    if f.get('dietary_exclude'):
+        bits.append("Without: " + ', '.join(x.strip().title() for x in f['dietary_exclude'].split(',') if x.strip()))
+    return ' · '.join(bits) if bits else 'No filters — full weekly menu'
+
+
+def build_menu_pdf(results: Dict[str, Any], filters: Dict[str, str]) -> bytes:
+    """Render search results (as returned by find_matching_serveries) to a PDF."""
+    styles = _pdf_styles()
+    page_w, page_h = PDF_PAGE_SIZE
+    content_w = page_w - 2 * PDF_MARGIN
+    now_cst = datetime.now(CST)
+
+    # Regroup: day -> meal -> servery -> [items]
+    grouped: Dict[str, Dict[str, Dict[str, list]]] = {}
+    for servery_key, data in results.items():
+        for it in data.get('items', []):
+            grouped.setdefault(it['day'], {}).setdefault(it['meal'], {}).setdefault(servery_key, []).append(it)
+
+    story = []
+    story.append(Paragraph('OwlUCanEat — Weekly Menu', styles['title']))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(xml_escape(_describe_filters(filters)), styles['subtitle']))
+    story.append(Paragraph(
+        xml_escape(f"Week {MENU_CACHE.get('week_key') or ''} · generated {now_cst.strftime('%A, %b %-d %Y at %-I:%M %p')} CST · source: dining.rice.edu"),
+        styles['subtitle']))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(
+        '<font color="#059669"><b>VEGAN</b> / <b>VEG</b> / <b>HALAL</b></font> = dietary label from Rice. '
+        '"contains: …" lists the allergens Rice flags for that item.', styles['legend']))
+    story.append(Spacer(1, 10))
+
+    def band(text, color_hex, style, pad=5):
+        t = Table([[Paragraph(text, style)]], colWidths=[content_w])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor(color_hex)),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), pad),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), pad),
+            ('ROUNDEDCORNERS', [4, 4, 4, 4]),
+        ]))
+        return t
+
+    total_items = 0
+    days = [d for d in PDF_DAY_ORDER if d in grouped] + sorted(d for d in grouped if d not in PDF_DAY_ORDER)
+    for day in days:
+        meals = [m for m in PDF_MEAL_ORDER if m in grouped[day]] + sorted(m for m in grouped[day] if m not in PDF_MEAL_ORDER)
+        for mi, meal in enumerate(meals):
+            heading = [Paragraph(meal.title(), styles['meal'])]
+            if mi == 0:
+                # Keep the day band glued to the first meal heading
+                heading = [band(day.upper(), '#0f172a', styles['day'], pad=7), Spacer(1, 2)] + heading
+            serveries = sorted(grouped[day][meal].keys(),
+                               key=lambda k: list(PDF_SERVERY_NAMES).index(k) if k in PDF_SERVERY_NAMES else 99)
+            for si, servery_key in enumerate(serveries):
+                items = grouped[day][meal][servery_key]
+                total_items += len(items)
+                color = PDF_SERVERY_COLORS.get(servery_key, '#475569')
+                header = Paragraph(xml_escape(PDF_SERVERY_NAMES.get(servery_key, servery_key.title())), styles['servery'])
+                rows = [[header]] + [[_pdf_item_paragraph(it, styles)] for it in items]
+                # Header is row 0 of the same table: it repeats if the table splits across
+                # pages, and NOSPLIT keeps it with the first item so it's never orphaned.
+                table = Table(rows, colWidths=[content_w], repeatRows=1)
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(color)),
+                    ('TOPPADDING', (0, 0), (-1, 0), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
+                    ('LINEBELOW', (0, 1), (-1, -2), 0.4, colors.HexColor('#e2e8f0')),
+                    ('LINEBEFORE', (0, 1), (0, -1), 2.5, colors.HexColor(color)),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                    ('TOPPADDING', (0, 1), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+                    ('NOSPLIT', (0, 0), (-1, min(1, len(rows) - 1))),
+                ]))
+                if si == 0:
+                    story.append(KeepTogether(heading + [table]) if len(rows) <= 4 else KeepTogether(heading))
+                    if len(rows) > 4:
+                        story.append(table)
+                else:
+                    story.append(table)
+                story.append(Spacer(1, 8))
+        story.append(Spacer(1, 6))
+
+    if total_items == 0:
+        story.append(Paragraph("No menu items match these filters.", styles['empty']))
+
+    footer_text = f"OwlUCanEat · {now_cst.strftime('%b %-d, %Y')}"
+
+    def on_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 8)
+        canvas.setFillColor(colors.HexColor('#94a3b8'))
+        canvas.drawString(PDF_MARGIN, 0.28 * inch, footer_text)
+        canvas.drawRightString(page_w - PDF_MARGIN, 0.28 * inch, f"Page {doc.page}")
+        canvas.restoreState()
+
+    buf = BytesIO()
+    doc = BaseDocTemplate(buf, pagesize=PDF_PAGE_SIZE,
+                          leftMargin=PDF_MARGIN, rightMargin=PDF_MARGIN,
+                          topMargin=PDF_MARGIN, bottomMargin=PDF_MARGIN + 0.15 * inch,
+                          title='OwlUCanEat weekly menu', author='OwlUCanEat')
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id='main',
+                  leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+    doc.addPageTemplates([PageTemplate(id='page', frames=[frame], onPage=on_page)])
+    doc.build(story)
+    return buf.getvalue()
+
+
 class SearchRequest(BaseModel):
     cuisine: Optional[str] = None
     dietary: Optional[str] = None  # Items that MUST contain these (comma-separated)
@@ -1001,6 +1203,44 @@ async def refresh_menus():
         'serveries': summary,
         'total_items': sum(v['items'] for v in summary.values()),
     })
+
+
+def _normalized_filters(search_request: SearchRequest) -> Dict[str, str]:
+    return {
+        'cuisine': (search_request.cuisine or "").strip(),
+        'dietary': (search_request.dietary or "").strip(),
+        'dietary_exclude': (search_request.dietary_exclude or "").strip(),
+        'dietary_mode': (search_request.dietary_mode or "and").strip().lower(),
+        'day': (search_request.day or "").strip(),
+        'meal': (search_request.meal or "").strip(),
+        'item': (search_request.item or "").strip(),
+        'servery': (search_request.servery or "").strip(),
+    }
+
+
+def _run_search(f: Dict[str, str]):
+    return find_matching_serveries(
+        cuisine_filter=f['cuisine'] or None,
+        dietary_filter=f['dietary'] or None,
+        dietary_exclude=f['dietary_exclude'] or None,
+        dietary_mode=f['dietary_mode'],
+        day_filter=f['day'] or None,
+        meal_filter=f['meal'] or None,
+        item_filter=f['item'] or None,
+        servery_filter=f['servery'] or None,
+    )
+
+
+@app.post("/api/export")
+async def export_pdf(search_request: SearchRequest):
+    """Export the menu matching the given filters as a phone-friendly PDF."""
+    f = _normalized_filters(search_request)
+    results = _run_search(f)
+    pdf_bytes = build_menu_pdf(results, f)
+    scope = f['day'].lower() if f['day'] else 'week'
+    filename = f"owlucaneat-menu-{scope}-{datetime.now(CST).strftime('%Y-%m-%d')}.pdf"
+    return Response(content=pdf_bytes, media_type='application/pdf',
+                    headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
 
 @app.post("/api/search")

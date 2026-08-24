@@ -714,7 +714,8 @@
             flex: 1 1 auto;
         }
 
-        .refresh-btn {
+        .refresh-btn,
+        .export-btn {
             flex: 0 0 auto;
             display: inline-flex;
             align-items: center;
@@ -732,17 +733,20 @@
             white-space: nowrap;
         }
 
-        .refresh-btn:hover {
+        .refresh-btn:hover,
+        .export-btn:hover {
             background: #f1f5f9;
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(30, 41, 59, 0.15);
         }
 
-        .refresh-btn:active {
+        .refresh-btn:active,
+        .export-btn:active {
             transform: translateY(0);
         }
 
-        .refresh-btn:disabled {
+        .refresh-btn:disabled,
+        .export-btn:disabled {
             cursor: not-allowed;
             opacity: 0.6;
             transform: none !important;
@@ -764,13 +768,15 @@
             to { transform: rotate(360deg); }
         }
 
-        body.dark-mode .refresh-btn {
+        body.dark-mode .refresh-btn,
+        body.dark-mode .export-btn {
             background: transparent;
             color: #10b981;
             border-color: #10b981;
         }
 
-        body.dark-mode .refresh-btn:hover {
+        body.dark-mode .refresh-btn:hover,
+        body.dark-mode .export-btn:hover {
             background: rgba(16, 185, 129, 0.12);
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
         }
@@ -1544,7 +1550,8 @@
                 margin-top: 12px;
             }
 
-            .refresh-btn {
+            .refresh-btn,
+            .export-btn {
                 font-size: 0.95rem;
                 padding: 10px 16px;
                 border-radius: 999px;
@@ -1867,6 +1874,10 @@
                 <button class="refresh-btn" id="refresh-btn" onclick="refreshMenus()" title="Re-download this week's menus from dining.rice.edu (ignores the cached copy)">
                     <span class="refresh-icon" aria-hidden="true">&#x21bb;</span>
                     <span>Refresh</span>
+                </button>
+                <button class="export-btn" id="export-btn" onclick="exportPdf()" title="Download the menu matching the current filters as a phone-friendly PDF">
+                    <span class="refresh-icon" aria-hidden="true">&#x2193;</span>
+                    <span>Export PDF</span>
                 </button>
             </div>
             <div class="refresh-status" id="refresh-status" aria-live="polite"></div>
@@ -2435,6 +2446,60 @@
             } catch (error) {
                 status.classList.add('error');
                 status.textContent = `Refresh failed: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('refreshing');
+            }
+        }
+
+        // Current filter selections in the shape /api/search and /api/export expect
+        function currentFilterPayload() {
+            const servery = allServeriesSelected ? '' : (selectedServeries.length > 0 ? selectedServeries.join(',') : '');
+            return {
+                cuisine: selectedCuisines.join(','),
+                dietary: selectedDietariesInclude.join(','),
+                dietary_exclude: selectedDietariesExclude.join(','),
+                dietary_mode: dietaryMode || "or",
+                day: document.getElementById('day').value.trim(),
+                meal: document.getElementById('meal').value.trim(),
+                item: document.getElementById('item').value.trim(),
+                servery: servery
+            };
+        }
+
+        // Download the menu matching the current filters as a PDF
+        async function exportPdf() {
+            const btn = document.getElementById('export-btn');
+            const status = document.getElementById('refresh-status');
+            btn.disabled = true;
+            btn.classList.add('refreshing');
+            status.classList.remove('error');
+            status.textContent = 'Building your PDF…';
+            try {
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentFilterPayload())
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const disposition = response.headers.get('Content-Disposition') || '';
+                const match = disposition.match(/filename="([^"]+)"/);
+                const filename = match ? match[1] : 'owlucaneat-menu.pdf';
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+                status.textContent = `PDF ready: ${filename}`;
+            } catch (error) {
+                status.classList.add('error');
+                status.textContent = `Export failed: ${error.message}`;
             } finally {
                 btn.disabled = false;
                 btn.classList.remove('refreshing');
