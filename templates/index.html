@@ -701,6 +701,99 @@
             background: #475569 !important;
         }
 
+        /* Search + Refresh button row */
+        .action-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            margin-top: 32px;
+        }
+
+        .action-row .search-btn {
+            margin-top: 0;
+            flex: 1 1 auto;
+        }
+
+        .refresh-btn {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 22px;
+            font-size: 1rem;
+            font-weight: 600;
+            background: #ffffff;
+            color: #1e293b;
+            border: 2px solid #1e293b;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .refresh-btn:hover {
+            background: #f1f5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 41, 59, 0.15);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+
+        .refresh-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .refresh-btn .refresh-icon {
+            display: inline-block;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .refresh-btn.refreshing .refresh-icon {
+            animation: refresh-spin 0.9s linear infinite;
+        }
+
+        @keyframes refresh-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        body.dark-mode .refresh-btn {
+            background: transparent;
+            color: #10b981;
+            border-color: #10b981;
+        }
+
+        body.dark-mode .refresh-btn:hover {
+            background: rgba(16, 185, 129, 0.12);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
+        }
+
+        .refresh-status {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: #475569;
+            min-height: 1.2em;
+        }
+
+        .refresh-status.error {
+            color: #dc2626;
+        }
+
+        body.dark-mode .refresh-status {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .refresh-status.error {
+            color: #f87171;
+        }
+
         .results {
             padding: 40px;
             background: #f8f9fa;
@@ -1445,6 +1538,18 @@
                 margin-top: 4px;
             }
 
+            .action-row {
+                flex-direction: column;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .refresh-btn {
+                font-size: 0.95rem;
+                padding: 10px 16px;
+                border-radius: 999px;
+            }
+
             .item-group {
                 padding: 14px 12px 10px;
             }
@@ -1587,6 +1692,9 @@
                     </div>
                     <div class="servery-option" data-servery="baker">
                         <span>Baker College Kitchen</span>
+                    </div>
+                    <div class="servery-option" data-servery="south main">
+                        <span>South Main Servery</span>
                     </div>
                 </div>
                 <div id="servery-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
@@ -1754,7 +1862,14 @@
             </div>
 
 
-            <button class="search-btn" id="search-btn" onclick="search()">Search Serveries</button>
+            <div class="action-row">
+                <button class="search-btn" id="search-btn" onclick="search()">Search Serveries</button>
+                <button class="refresh-btn" id="refresh-btn" onclick="refreshMenus()" title="Re-download this week's menus from dining.rice.edu (ignores the cached copy)">
+                    <span class="refresh-icon" aria-hidden="true">&#x21bb;</span>
+                    <span>Refresh</span>
+                </button>
+            </div>
+            <div class="refresh-status" id="refresh-status" aria-live="polite"></div>
         </div>
 
         <div class="results" id="results">
@@ -2137,7 +2252,8 @@
             'south': 'South Servery',
             'west': 'West Servery',
             'seibel': 'Seibel Servery',
-            'baker': 'Baker College Kitchen'
+            'baker': 'Baker College Kitchen',
+            'south main': 'South Main Servery'
         };
         const SERVERY_COLOR_MAP = {
             'all': '#6b7280',      // Gray for "All Serveries"
@@ -2145,9 +2261,10 @@
             'south': '#10b981',    // Green
             'west': '#8b5cf6',     // Purple
             'seibel': '#f59e0b',   // Amber
-            'baker': '#ef4444'      // Red
+            'baker': '#ef4444',    // Red
+            'south main': '#ec4899' // Pink
         };
-        const TOTAL_SERVERIES = 5; // Total number of individual serveries (north, south, west, seibel, baker)
+        const TOTAL_SERVERIES = Object.keys(SERVERY_NAMES).length; // north, south, west, seibel, baker, south main
 
         // Handle servery option clicks
         document.querySelectorAll('.servery-option').forEach(option => {
@@ -2287,6 +2404,42 @@
         updateServeryOptions();
         renderServeryChips();
 
+
+        // Force the backend to throw away its weekly cache and re-download every
+        // servery's menu from dining.rice.edu. Useful when a menu changed mid-week.
+        async function refreshMenus() {
+            const btn = document.getElementById('refresh-btn');
+            const status = document.getElementById('refresh-status');
+            btn.disabled = true;
+            btn.classList.add('refreshing');
+            status.classList.remove('error');
+            status.textContent = 'Re-downloading this week\'s menus from dining.rice.edu…';
+
+            try {
+                const response = await fetch('/api/refresh', { method: 'POST' });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                const parts = Object.entries(data.serveries || {}).map(([key, info]) => {
+                    const name = SERVERY_NAMES[key] || key;
+                    return `${name}: ${info.items}`;
+                });
+                status.textContent = `Menus refreshed at ${data.refreshed_at} — ${data.total_items} items (${parts.join(', ')})`;
+
+                // If results are showing, re-run the search so the page reflects the new data
+                const resultsDiv = document.getElementById('results');
+                if (resultsDiv && !resultsDiv.querySelector('.no-results') && resultsDiv.textContent.trim()) {
+                    await search();
+                }
+            } catch (error) {
+                status.classList.add('error');
+                status.textContent = `Refresh failed: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('refreshing');
+            }
+        }
 
         async function search() {
             const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
