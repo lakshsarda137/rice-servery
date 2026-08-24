@@ -25,7 +25,11 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether)
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+import os
+
+# Resolve relative to this file: on Vercel the process cwd is not the project dir.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # Central Time Zone (Rice University is in Houston, TX)
 CST = pytz.timezone('America/Chicago')
@@ -1186,10 +1190,8 @@ async def index(request: Request):
         'greek': 'Greek'
     }
     supported_cuisines = sorted([cuisine_map.get(cuisine.lower(), cuisine.title()) for cuisine in CUISINE_KEYWORDS.keys()])
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "supported_cuisines": supported_cuisines
-    })
+    # New-style signature (request first) - the old (name, {"request": ...}) form was removed in recent Starlette
+    return templates.TemplateResponse(request, "index.html", {"supported_cuisines": supported_cuisines})
 
 
 @app.post("/api/refresh")
