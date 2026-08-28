@@ -11,8 +11,6 @@ servery_finder_web.py   All backend logic: scraping, caching, search, PDF export
 templates/index.html    The single-page frontend (HTML, CSS, and JS)
 requirements.txt        Python dependencies
 vercel.json             Vercel deployment config (routes everything to the Python app)
-run_web.sh / setup_venv.sh   Helpers to run locally
-DEPLOY_VERCEL.md        Deployment notes
 ```
 
 ## How menus are extracted
