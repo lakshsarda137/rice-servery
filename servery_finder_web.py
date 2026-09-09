@@ -99,7 +99,7 @@ SERVERIES = {
     'west': 'west-servery',
     'seibel': 'seibel-servery',
     'baker': 'baker-college-kitchen',
-    'south main': 'south-main',
+    'south main': 'south-main-servery',
 }
 
 # Dining schedule (CST) - Fall/Spring hours as posted at https://dining.rice.edu/#dining-hours (checked 2026-08-24)
