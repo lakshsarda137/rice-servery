@@ -406,6 +406,9 @@
                 .sort((a, b) => b.value - a.value);
         }
 
+        // Indian first, then most dishes first
+        const indianFirst = (a, b) => (b.key === 'indian') - (a.key === 'indian') || b.total - a.total;
+
         function cuisineTotal(key) {
             return data.serveries.reduce((sum, s) => sum + (data.by_servery[s.key].cuisine_dishes[key] || 0), 0);
         }
@@ -453,7 +456,7 @@
             const pills = data.cuisines
                 .map(c => ({ ...c, total: cuisineTotal(c.key) }))
                 .filter(c => c.total > 0 || c.key === view.cuisine)
-                .sort((a, b) => b.total - a.total)
+                .sort(indianFirst)
                 .map(c => `<button type="button" class="pill ${c.key === view.cuisine ? 'selected' : ''}" data-cuisine="${c.key}">${escapeHtml(c.name)}</button>`)
                 .join('');
 
@@ -486,7 +489,7 @@
             const rows = data.cuisines
                 .map(c => ({ ...c, total: cuisineTotal(c.key) }))
                 .filter(c => c.total > 0)
-                .sort((a, b) => b.total - a.total);
+                .sort(indianFirst);
             const max = Math.max(1, ...rows.flatMap(c => data.serveries.map(s => valueOf(s.key, c.key))));
 
             const head = data.serveries.map(s => `<th scope="col" title="${escapeHtml(s.name)}">${escapeHtml(shortServery(s.name))}</th>`).join('');
@@ -672,11 +675,12 @@
                 return;
             }
 
-            // Start on the cuisine with the most dishes
+            // Start on Indian (or the cuisine with the most dishes if there was no Indian food)
             if (!view.cuisine || !cuisineTotal(view.cuisine)) {
                 view.cuisine = data.cuisines
                     .map(c => ({ key: c.key, total: cuisineTotal(c.key) }))
-                    .sort((a, b) => b.total - a.total)[0].key;
+                    .filter(c => c.total > 0)
+                    .sort(indianFirst)[0]?.key || 'indian';
             }
             view.cell = null;
 

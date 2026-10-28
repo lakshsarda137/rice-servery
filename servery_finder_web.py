@@ -1462,7 +1462,8 @@ def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Main page"""
-    supported_cuisines = sorted(CUISINE_LABELS.values())
+    # Indian first, then alphabetical
+    supported_cuisines = sorted(CUISINE_LABELS.values(), key=lambda name: (name != 'Indian', name))
     # New-style signature (request first) - the old (name, {"request": ...}) form was removed in recent Starlette
     return templates.TemplateResponse(request, "index.html", {"supported_cuisines": supported_cuisines, "active_page": "menu"})
 
