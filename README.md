@@ -39,7 +39,7 @@ vercel.json             Vercel deployment config (routes everything to the Pytho
 
 ## Statistics page
 
-`/statistics` charts what each servery served in a week (cuisine counts, cuisine mix, vegan/vegetarian/halal share, busiest days, most repeated dishes). The page has a time-range picker (this week, last week, last 4 weeks, all time, or any custom range of weeks). `GET /api/stats?from=2026-W40&to=2026-W44` returns the numbers from `compute_stats()`; both default to the current week.
+`/statistics` charts what each servery served in a week (cuisine counts, cuisine mix, vegan/vegetarian/halal share, busiest days, most repeated dishes). The page has a time-range picker (this week, last week, last 4 weeks, all time, or any custom range of weeks). `GET /api/stats?from=2026-W40&to=2026-W44` returns the numbers from `compute_stats()`; both default to the current week. Tapping a square in the cuisine grid calls `GET /api/stats/cell?servery=seibel&cuisine=indian&from=…&to=…`, which lists every dish behind that count and the word that matched it.
 
 Every menu download is saved to a menu log, one record per servery per ISO week, so the stats keep days that Rice has already removed from its site. Where the log lives:
 

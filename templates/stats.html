@@ -215,11 +215,38 @@
         .heat td.active { box-shadow: 0 0 0 2px var(--text); }
 
         .heat-caption {
-            min-height: 2.6em;
-            margin-top: 10px;
-            font-size: 0.85rem;
+            margin-top: 12px;
+            font-size: 0.88rem;
             color: var(--text-2);
         }
+
+        .heat-caption b { color: var(--text); font-weight: 600; }
+        .cell-note { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+        .cell-meal { margin-top: 14px; }
+
+        .cell-meal-head {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+
+        .cell-dishes { list-style: none; }
+
+        .cell-dishes li {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            padding: 7px 0;
+            border-top: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .cell-dishes li:first-child { border-top: 0; }
+        .cell-dishes .kw { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
 
         .heat-legend {
             display: flex;
@@ -368,7 +395,8 @@
         const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         const DIETARY = ['Vegan', 'Vegetarian', 'Halal'];
 
-        const view = { cuisine: null, cuisineMetric: 'dishes', mixMetric: 'dishes', dietary: 'Vegan', cell: null, custom: false };
+        const view = { cuisine: null, cuisineMetric: 'dishes', mixMetric: 'dishes', dietary: 'Vegan', topGroup: 'all', cell: null, custom: false };
+        const cellDetails = new Map(); // "from|to|servery|cuisine" -> {meals} or 'loading' / 'error'
         let data = null;
 
         function escapeHtml(text) {
@@ -474,13 +502,55 @@
             </section>`;
         }
 
+        const cellKey = cell => `${data.range.from}|${data.range.to}|${cell.servery}|${cell.cuisine}`;
+
         function heatCaption() {
-            if (!view.cell) return 'Tap a number for details.';
+            if (!view.cell) return 'Tap a number to see the dishes behind it.';
             const s = data.by_servery[view.cell.servery];
             const c = data.cuisines.find(c => c.key === view.cell.cuisine);
             const dishes = s.cuisine_dishes[c.key] || 0;
             const meals = s.cuisine_meals[c.key] || 0;
-            return `<b>${s.name}, ${escapeHtml(c.name)}:</b> ${plural(dishes, 'dish')} over ${meals} of ${s.meals} meals.`;
+            const summary = `<b>${s.name}, ${escapeHtml(c.name)}:</b> ${plural(dishes, 'dish')} over ${meals} of ${s.meals} meals.`;
+            if (!dishes) return summary;
+
+            const detail = cellDetails.get(cellKey(view.cell));
+            if (!detail || detail === 'loading') return `${summary}<p class="cell-note">Loading dishes…</p>`;
+            if (detail === 'error') return `${summary}<p class="cell-note">Couldn't load the dishes. Tap again to retry.</p>`;
+
+            const mealHtml = detail.meals.map(m => {
+                const date = new Date(`${m.date}T00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                return `<div class="cell-meal">
+                    <div class="cell-meal-head">${date} · ${titleCase(m.meal)}</div>
+                    <ul class="cell-dishes">${m.dishes.map(d =>
+                        `<li><span>${escapeHtml(d.name)}</span><span class="kw">${escapeHtml(d.keyword.toLowerCase())}</span></li>`
+                    ).join('')}</ul>
+                </div>`;
+            }).join('');
+            return `${summary}<p class="cell-note">The grey word is what made each dish count as ${escapeHtml(c.name)}.</p>${mealHtml}`;
+        }
+
+        async function showCell(cell) {
+            view.cell = cell;
+            const caption = () => {
+                const el = document.getElementById('heat-caption');
+                if (el && view.cell === cell) el.innerHTML = heatCaption();
+                return el;
+            };
+            const key = cellKey(cell);
+            const hasDishes = data.by_servery[cell.servery].cuisine_dishes[cell.cuisine];
+            if (hasDishes && (!cellDetails.has(key) || cellDetails.get(key) === 'error')) {
+                cellDetails.set(key, 'loading');
+                caption()?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                const params = new URLSearchParams({ from: data.range.from, to: data.range.to, servery: cell.servery, cuisine: cell.cuisine });
+                try {
+                    const response = await fetch('/api/stats/cell?' + params);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    cellDetails.set(key, await response.json());
+                } catch (error) {
+                    cellDetails.set(key, 'error');
+                }
+            }
+            caption()?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         function renderMixCard() {
@@ -565,12 +635,21 @@
         }
 
         function renderRepeatsCard() {
-            const dishes = data.top_dishes;
+            if (!data.top_dishes[view.topGroup]) view.topGroup = 'all';
+            const dishes = data.top_dishes[view.topGroup];
             if (!dishes.length) return '';
             const max = dishes[0].count;
-            return `<section class="card chart-card">
+            const groups = data.cuisines
+                .filter(c => data.top_dishes[c.key])
+                .map(c => ({ ...c, total: cuisineTotal(c.key) }))
+                .sort(indianFirst);
+            const pills = [{ key: 'all', name: 'All' }, ...groups].map(g =>
+                `<button type="button" class="pill ${g.key === view.topGroup ? 'selected' : ''}" data-top-group="${g.key}">${escapeHtml(g.name)}</button>`
+            ).join('');
+            return `<section class="card chart-card" id="card-repeats">
                 <h2 class="chart-title">Most common dishes</h2>
                 <p class="chart-sub">Times each dish was on a menu</p>
+                <div class="pill-scroll">${pills}</div>
                 <ol class="dish-list">${dishes.map((d, i) => `
                     <li class="dish-row">
                         <span class="dish-rank">${i + 1}</span>
@@ -602,13 +681,15 @@
         }
 
         document.getElementById('stats').addEventListener('click', e => {
-            const el = e.target.closest('[data-cuisine], [data-cuisine-metric], [data-mix-metric], [data-dietary]');
+            const el = e.target.closest('[data-cuisine], [data-cuisine-metric], [data-mix-metric], [data-dietary], [data-top-group]');
             if (!el) return;
             if (el.tagName === 'TD') {
-                view.cell = { servery: el.dataset.servery, cuisine: el.dataset.cuisine };
                 document.querySelectorAll('.heat td.active').forEach(td => td.classList.remove('active'));
                 el.classList.add('active');
-                document.getElementById('heat-caption').innerHTML = heatCaption();
+                showCell({ servery: el.dataset.servery, cuisine: el.dataset.cuisine });
+            } else if (el.dataset.topGroup) {
+                view.topGroup = el.dataset.topGroup;
+                rerender('card-repeats', renderRepeatsCard());
             } else if (el.dataset.cuisine) {
                 view.cuisine = el.dataset.cuisine;
                 rerender('card-cuisine', renderCuisineCard());

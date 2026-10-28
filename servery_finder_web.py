@@ -768,20 +768,20 @@ def refresh_all_menus():
     return summary
 
 
+def cuisine_keyword(item_name, cuisine_key):
+    """The word in item_name that makes it count as cuisine_key (e.g. "Panner"), or None."""
+    exclude = CUISINE_EXCLUDE_PATTERNS.get(cuisine_key)
+    if exclude and exclude.search(item_name):
+        return None
+    match = CUISINE_PATTERNS[cuisine_key].search(item_name)
+    return match.group(0) if match else None
+
+
 def matches_cuisine(item_name, cuisine):
     """Check if item matches cuisine"""
     cuisine_lower = cuisine.lower()
-
     # Unknown cuisines never match - prevents "french" matching "french fries"
-    for key, pattern in CUISINE_PATTERNS.items():
-        if key not in cuisine_lower:
-            continue
-        exclude = CUISINE_EXCLUDE_PATTERNS.get(key)
-        if exclude and exclude.search(item_name):
-            continue
-        if pattern.search(item_name):
-            return True
-    return False
+    return any(key in cuisine_lower and cuisine_keyword(item_name, key) for key in CUISINE_PATTERNS)
 
 
 def matches_dietary(item_data, dietary_filter):
@@ -1364,6 +1364,16 @@ def _range_label(from_key: str, to_key: str) -> str:
     return f"{fmt(monday)} – {fmt(sunday)}"
 
 
+def range_menus(from_key: str, to_key: str) -> Dict[Tuple[str, str], Dict[str, Any]]:
+    """{(week_key, servery): menu} for a range: the live (cached) menus for the current week, the log for the rest."""
+    current = _current_week_key()
+    menus = load_menu_logs(from_key, to_key)
+    if from_key <= current <= to_key:
+        for name, path in SERVERIES.items():
+            menus[(current, name)] = get_weekly_menu(name, path)
+    return menus
+
+
 def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
     """Count what each servery served between two ISO weeks (inclusive).
 
@@ -1373,10 +1383,7 @@ def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
     The current week comes from the live (cached) menus, earlier weeks from the log.
     """
     current = _current_week_key()
-    menus = load_menu_logs(from_key, to_key)
-    if from_key <= current <= to_key:
-        for name, path in SERVERIES.items():
-            menus[(current, name)] = get_weekly_menu(name, path)
+    menus = range_menus(from_key, to_key)
     week_count = (_week_monday(to_key) - _week_monday(from_key)).days // 7 + 1
 
     by_servery = {}
@@ -1385,6 +1392,7 @@ def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
     dish_counts = Counter()
     dish_names = {}
     dish_serveries = defaultdict(set)
+    dish_cuisines = defaultdict(set)
 
     for servery_name in SERVERIES:
         stats = {'dishes': 0, 'meals': 0, 'cuisine_dishes': Counter(), 'cuisine_meals': Counter(),
@@ -1407,6 +1415,7 @@ def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
                             if matches_cuisine(name, cuisine):
                                 stats['cuisine_dishes'][cuisine] += 1
                                 cuisines_this_meal.add(cuisine)
+                                dish_cuisines[name.lower()].add(cuisine)
                         for tag in STATS_DIETARY:
                             if tag in item.get('icons', []):
                                 stats['dietary'][tag] += 1
@@ -1452,11 +1461,34 @@ def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
         },
         'by_servery': by_servery,
         'per_day': [{'day': d, 'dishes': per_day[d]} for d in STATS_DAYS],
-        'top_dishes': [
-            {'name': dish_names[k], 'count': n, 'serveries': sorted(s.title() for s in dish_serveries[k])}
-            for k, n in dish_counts.most_common(10)
-        ],
+        # 'all' plus one list per cuisine that appeared
+        'top_dishes': {
+            group: [
+                {'name': dish_names[k], 'count': n, 'serveries': sorted(s.title() for s in dish_serveries[k])}
+                for k, n in dish_counts.most_common() if group == 'all' or group in dish_cuisines[k]
+            ][:10]
+            for group in ['all', *sorted(cuisines_seen)]
+        },
     }
+
+
+def cuisine_cell_detail(from_key: str, to_key: str, servery_name: str, cuisine_key: str) -> Dict[str, Any]:
+    """Every dish behind one square of the cuisine grid, grouped by meal in date order."""
+    meals = []
+    for (week_key, logged_servery), menu in sorted(range_menus(from_key, to_key).items()):
+        if logged_servery != servery_name:
+            continue
+        monday = _week_monday(week_key)
+        for day_index, day in enumerate(STATS_DAYS):
+            for meal, items in (menu.get(day) or {}).items():
+                dishes = [{'name': item['name'], 'keyword': keyword} for item in items or []
+                          if (keyword := cuisine_keyword(item['name'], cuisine_key))]
+                if dishes:
+                    meals.append({'date': (monday + timedelta(days=day_index)).isoformat(), 'meal': meal,
+                                  'dishes': dishes})
+    meal_order = {'breakfast': 0, 'lunch': 1, 'munch': 2, 'dinner': 3}
+    meals.sort(key=lambda m: (m['date'], meal_order.get(m['meal'], 9)))
+    return {'servery': servery_name, 'cuisine': cuisine_key, 'meals': meals}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -1473,17 +1505,30 @@ async def statistics_page(request: Request):
     return templates.TemplateResponse(request, "stats.html", {"active_page": "statistics"})
 
 
-@app.get("/api/stats")
-async def range_stats(from_week: Optional[str] = Query(None, alias="from"),
-                      to_week: Optional[str] = Query(None, alias="to")):
-    """Stats for ISO weeks from..to (inclusive), e.g. ?from=2026-W40&to=2026-W44. Defaults to this week."""
+def _stats_range(from_week: Optional[str], to_week: Optional[str]) -> Tuple[str, str]:
+    """Validated (from, to) week keys; both default to the current week."""
     def valid(week_key):
         return week_key if week_key and WEEK_KEY_RE.match(week_key) and _week_monday(week_key) else None
     to_key = valid(to_week) or _current_week_key()
     from_key = valid(from_week) or to_key
-    if from_key > to_key:
-        from_key, to_key = to_key, from_key
-    return JSONResponse(content=compute_stats(from_key, to_key))
+    return (from_key, to_key) if from_key <= to_key else (to_key, from_key)
+
+
+@app.get("/api/stats")
+async def range_stats(from_week: Optional[str] = Query(None, alias="from"),
+                      to_week: Optional[str] = Query(None, alias="to")):
+    """Stats for ISO weeks from..to (inclusive), e.g. ?from=2026-W40&to=2026-W44. Defaults to this week."""
+    return JSONResponse(content=compute_stats(*_stats_range(from_week, to_week)))
+
+
+@app.get("/api/stats/cell")
+async def stats_cell(servery: str, cuisine: str, from_week: Optional[str] = Query(None, alias="from"),
+                     to_week: Optional[str] = Query(None, alias="to")):
+    """The dishes behind one servery x cuisine square, for the same from..to range as /api/stats."""
+    if servery not in SERVERIES or cuisine not in CUISINE_KEYWORDS:
+        return JSONResponse(status_code=400, content={'error': 'unknown servery or cuisine'})
+    from_key, to_key = _stats_range(from_week, to_week)
+    return JSONResponse(content=cuisine_cell_detail(from_key, to_key, servery, cuisine))
 
 
 @app.get("/api/cron/log-menus")
