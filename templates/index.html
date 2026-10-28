@@ -1,1675 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% include "_head.html" %}
     <title>OwlUCanEat</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .intro { padding: 10px 0 22px; }
+
+        .open-status {
+            margin-top: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 36px;
+            padding: 0 12px 0 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-2);
+            font-size: 0.85rem;
+            font-weight: 500;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f1f5f9;
-            min-height: 100vh;
-            padding: 24px;
-            line-height: 1.6;
-            color: #1e293b;
-            transition: background-color 0.3s ease, color 0.3s ease;
+        .open-status .chevron {
+            width: 14px;
+            height: 14px;
+            color: var(--muted);
+            transition: transform 0.2s ease;
         }
 
-        body.dark-mode {
-            background: #0f172a;
-            color: #f1f5f9;
+        .open-status[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+        .open-status .sep { color: var(--border-strong); }
+
+        .open-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-        }
+        .open-list[hidden] { display: none; }
 
-        body.dark-mode .container {
-            background: #1e293b;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        }
-
-        .header {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            color: white;
-            padding: 48px 40px;
-            text-align: center;
-            position: relative;
-        }
-
-        .dark-mode-toggle {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.25);
-            border: 2px solid rgba(255, 255, 255, 0.5);
-            color: white;
-            padding: 8px 14px;
-            border-radius: 10px;
-            cursor: pointer;
+        .open-list-item {
             font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            z-index: 10;
-            max-width: 140px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .dark-mode-toggle:hover {
-            background: rgba(255, 255, 255, 0.35);
-            border-color: rgba(255, 255, 255, 0.7);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .current-time-badge {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            color: white;
-            padding: 6px 12px;
+            color: var(--text-2);
+            background: var(--surface-2);
             border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-            max-width: 140px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            padding: 5px 10px;
         }
 
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 8px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
+        .open-list-item b { font-weight: 600; color: var(--text); }
 
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.95;
-            font-weight: 400;
-        }
+        /* Filters */
+        .filters { padding: 2px 16px; }
 
-        .filters {
-            padding: 40px;
-            background: white;
-            transition: background-color 0.3s ease;
-        }
+        .field { padding: 18px 0; border-bottom: 1px solid var(--border); }
+        .field:last-child { border-bottom: 0; }
 
-        body.dark-mode .filters {
-            background: #1e293b;
-            border-top: 1px solid #334155;
-        }
-
-        .filter-group {
-            margin-bottom: 32px;
-        }
-
-        .filter-group:last-of-type {
-            margin-bottom: 0;
-        }
-
-        .time-filter-group {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid #0ea5e9;
-            margin-bottom: 32px;
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
-        }
-
-        body.dark-mode .time-filter-group {
-            background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
-            border-color: #0ea5e9;
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-        }
-
-        .time-filter-group label {
-            color: #0c4a6e;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 16px;
+        .field-head {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        body.dark-mode .time-filter-group label {
-            color: #7dd3fc;
-        }
-
-        .time-filter-group label::before {
-            content: "🕐";
-            font-size: 1.2rem;
-        }
-
-        .servery-filter-group {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid #f59e0b;
-            margin-bottom: 32px;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
-        }
-
-        body.dark-mode .servery-filter-group {
-            background: linear-gradient(135deg, #78350f 0%, #1e293b 100%);
-            border-color: #f59e0b;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-        }
-
-        .servery-filter-group label {
-            color: #92400e;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        body.dark-mode .servery-filter-group label {
-            color: #fcd34d;
-        }
-
-
-        .cuisine-filter-group {
-            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid #f97316;
-            margin-bottom: 32px;
-            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
-        }
-
-        body.dark-mode .cuisine-filter-group {
-            background: linear-gradient(135deg, #7c2d12 0%, #1e293b 100%);
-            border-color: #f97316;
-            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-        }
-
-        .cuisine-filter-group label {
-            color: #9a3412;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        body.dark-mode .cuisine-filter-group label {
-            color: #fdba74;
-        }
-
-        .cuisine-filter-group label::before {
-            content: "🍽️";
-            font-size: 1.2rem;
-        }
-
-        .item-filter-group {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid #16a34a;
-            margin-bottom: 32px;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
-        }
-
-        body.dark-mode .item-filter-group {
-            background: linear-gradient(135deg, #14532d 0%, #1e293b 100%);
-            border-color: #16a34a;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
-        }
-
-        .item-filter-group label {
-            color: #166534;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        body.dark-mode .item-filter-group label {
-            color: #86efac;
-        }
-
-        .item-filter-group label::before {
-            content: "🔍";
-            font-size: 1.2rem;
-        }
-
-        .filter-group label {
-            display: block;
-            font-weight: 600;
+            justify-content: space-between;
+            gap: 12px;
             margin-bottom: 12px;
-            color: #2d3748;
-            font-size: 1rem;
-            transition: color 0.3s ease;
         }
 
-        body.dark-mode .filter-group label {
-            color: #f1f5f9;
-            font-weight: 700;
+        .field-head .section-label { margin: 0; }
+        .field-sub { margin-top: 18px; }
+
+        .select-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        .select-wrap { position: relative; }
+
+        .select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            width: 7px;
+            height: 7px;
+            border-right: 1.5px solid var(--muted);
+            border-bottom: 1.5px solid var(--muted);
+            transform: translateY(-70%) rotate(45deg);
+            pointer-events: none;
         }
 
         .filter-input {
             width: 100%;
-            padding: 14px 18px;
-            font-size: 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            transition: all 0.2s ease;
-            background: #f8f9fa;
-            color: #2d3748;
+            height: 46px;
+            padding: 0 14px;
+            font-size: 16px; /* 16px stops iOS zooming in on focus */
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface-2);
+            color: var(--text);
+            -webkit-appearance: none;
+            appearance: none;
         }
 
-        .search-input-wrapper {
-            position: relative;
-        }
-
-        .search-input-wrapper .filter-input {
-            padding-right: 50px;
-        }
-
-        .search-magnifier {
-            position: absolute;
-            right: 18px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 20px;
-            height: 20px;
-            pointer-events: none;
-            opacity: 0.5;
-            animation: magnifierMove 3s ease-in-out infinite;
-        }
-
-        @keyframes magnifierMove {
-            0%, 100% {
-                transform: translateY(-50%) translateX(0);
-            }
-            50% {
-                transform: translateY(-50%) translateX(-8px);
-            }
-        }
-
-        body.dark-mode .search-magnifier {
-            opacity: 0.6;
-        }
-
-        body.dark-mode .filter-input {
-            background: #334155;
-            border-color: #475569;
-            color: #f1f5f9;
-        }
-
-        .filter-input:hover {
-            border-color: #cbd5e0;
-            background: white;
-        }
-
-        body.dark-mode .filter-input:hover {
-            border-color: #64748b;
-            background: #475569;
-        }
+        select.filter-input { padding-right: 36px; }
+        .filter-input::placeholder { color: var(--muted); }
 
         .filter-input:focus {
             outline: none;
-            border-color: #475569;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+            border-color: var(--text-2);
+            background: var(--surface);
         }
 
-        body.dark-mode .filter-input:focus {
-            border-color: #64748b;
-            background: #475569;
-            box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.2);
-        }
-
-        .dietary-icons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 12px;
-        }
-
-        .dietary-mode-btn {
-            border: 2px solid #cbd5e0;
-            background: #f8fafc;
-            color: #64748b;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            font-weight: 600;
-        }
-
-        .dietary-mode-btn.active {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
-        }
-
-        .dietary-mode-btn:hover {
-            border-color: #94a3b8;
-            background: #e2e8f0;
-        }
-
-        .dietary-mode-btn.active:hover {
-            background: #059669;
-            border-color: #059669;
-        }
-
-        body.dark-mode .dietary-mode-btn {
-            background: #334155;
-            border-color: #475569;
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .dietary-mode-btn.active {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-        }
-
-        .dietary-filter-mode-btn {
-            border: 2px solid #cbd5e0;
-            background: white;
-            color: #1f2933;
-            font-size: 0.85rem;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-weight: 600;
-        }
-
-        .dietary-filter-mode-btn:hover {
-            border-color: #94a3b8;
-            background: #f8fafc;
-        }
-
-        .dietary-filter-mode-btn.active {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        body.dark-mode .dietary-filter-mode-btn {
-            background: #334155;
-            border-color: #475569;
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .dietary-filter-mode-btn:hover {
-            background: #475569;
-            border-color: #64748b;
-        }
-
-        body.dark-mode .dietary-filter-mode-btn.active {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-        }
-
-        body.dark-mode .filter-group > div[style*="background: #f8fafc"] {
-            background: #1e293b !important;
-            border-color: #475569 !important;
-        }
-
-        body.dark-mode #dietary-mode-explanation {
-            color: #cbd5e1;
-        }
-
-        /* Dark mode styles for include/exclude sections - keep white text */
-        body.dark-mode .filter-group > div[style*="background: #1e293b"] {
-            background: #0f172a !important;
-        }
-
-        .icon-option {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: #f8f9fa;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #4a5568;
-            user-select: none;
-        }
-
-        .icon-option:hover {
-            border-color: #475569;
-            background: #f8fafc;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        /* Selected buttons in include section - green */
-        .dietary-icons-include .icon-option.selected {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-        }
-
-        .dietary-icons-include .icon-option.selected:hover {
-            background: #059669;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        /* Selected buttons in exclude section - red */
-        .dietary-icons-exclude .icon-option.selected {
-            background: #ef4444;
-            color: white;
-            border-color: #ef4444;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
-
-        .dietary-icons-exclude .icon-option.selected:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-
-        body.dark-mode .icon-option {
-            background: #334155;
-            border-color: #475569;
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .icon-option:hover {
-            background: #475569;
-            border-color: #64748b;
-        }
-
-        /* Dark mode - include section selected buttons (green) */
-        body.dark-mode .dietary-icons-include .icon-option.selected {
-            background: #10b981;
-            border-color: #10b981;
-            color: white;
-        }
-
-        body.dark-mode .dietary-icons-include .icon-option.selected:hover {
-            background: #059669;
-        }
-
-        /* Dark mode - exclude section selected buttons (red) */
-        body.dark-mode .dietary-icons-exclude .icon-option.selected {
-            background: #ef4444;
-            border-color: #ef4444;
-            color: white;
-        }
-
-        body.dark-mode .dietary-icons-exclude .icon-option.selected:hover {
-            background: #dc2626;
-        }
-
-        .servery-option {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: #f8f9fa;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #4a5568;
-            user-select: none;
-        }
-
-        .servery-option .servery-label-short { display: none; }
-
-        .servery-option:hover {
-            border-color: #475569;
-            background: #f8fafc;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .servery-option.selected {
-            background: #f59e0b;
-            color: white;
-            border-color: #f59e0b;
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-        }
-
-        .servery-option.selected:hover {
-            background: #d97706;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-        }
-
-        .servery-option.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-
-        .servery-option-all {
-            font-weight: 600;
-        }
-
-        body.dark-mode .servery-option {
-            background: #334155;
-            border-color: #475569;
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .servery-option:hover {
-            background: #475569;
-            border-color: #64748b;
-        }
-
-        body.dark-mode .servery-option.selected {
-            background: #f59e0b;
-            border-color: #f59e0b;
-            color: white;
-        }
-
-        body.dark-mode .servery-option.selected:hover {
-            background: #d97706;
-        }
-
-        .item-with-cuisines {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
+        .pill-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 
         .cuisine-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 999px;
             display: inline-block;
-        }
-
-        .icon-circle {
-            width: 22px;
-            height: 22px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.75rem;
-            color: white;
             flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .icon-vegan { background: #48bb78; }
-        .icon-vegetarian { background: #38a169; }
-        .icon-gluten { background: #718096; }
-        .icon-soy { background: #ed64a6; }
-        .icon-dairy { background: #4299e1; }
-        .icon-eggs { background: #9f7aea; }
-        .icon-fish { background: #9f7aea; }
-        .icon-shellfish { background: #38b2ac; }
-        .icon-peanuts { background: #f6ad55; }
-        .icon-tree-nuts { background: #c05621; }
-        .icon-halal { background: #e53e3e; }
-        .icon-sesame { background: #dd6b20; }
+        /* "Leave out" picks are struck through, so they read without relying on red */
+        .dietary-icons-exclude .icon-option.selected {
+            background: var(--danger-soft);
+            border-color: var(--danger);
+            color: var(--danger);
+            text-decoration: line-through;
+        }
+
+        /* Dietary badges (filter pills and dish rows) */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            line-height: 1;
+            padding: 3px 5px;
+            border-radius: 5px;
+            border: 1px solid currentColor;
+            text-decoration: none;
+        }
+
+        .tag-vegan { color: var(--tag-vegan); }
+        .tag-vegetarian { color: var(--tag-vegetarian); }
+        .tag-halal { color: var(--tag-halal); }
+        .pill.selected .tag { color: inherit; }
+
+        /* Actions */
+        .actions { margin-top: 16px; }
 
         .search-btn {
             width: 100%;
-            padding: 16px 24px;
+            height: 52px;
+            border: 0;
+            border-radius: 14px;
+            background: var(--text);
+            color: var(--bg);
             font-size: 1rem;
             font-weight: 600;
-            background: #1e293b;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 32px;
-            box-shadow: 0 4px 15px rgba(30, 41, 59, 0.2);
+            letter-spacing: 0.01em;
+            transition: opacity 0.15s ease;
         }
 
-        .search-btn:hover {
-            background: #334155;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 41, 59, 0.3);
-        }
+        .search-btn:active { opacity: 0.85; }
+        .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .search-btn:active {
-            transform: translateY(0);
-        }
-
-        body.dark-mode .search-btn {
-            background: #10b981;
-            color: white;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-            font-weight: 700;
-        }
-
-        body.dark-mode .search-btn:hover {
-            background: #059669;
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        .search-btn:disabled {
-            background: #94a3b8 !important;
-            color: #cbd5e0 !important;
-            cursor: not-allowed;
-            opacity: 0.6;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        body.dark-mode .search-btn:disabled {
-            background: #475569 !important;
-            color: #64748b !important;
-        }
-
-        .search-btn:disabled:hover {
-            background: #94a3b8 !important;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        body.dark-mode .search-btn:disabled:hover {
-            background: #475569 !important;
-        }
-
-        /* Search + Refresh button row */
-        .action-row {
+        .quiet-actions {
             display: flex;
-            gap: 12px;
-            align-items: stretch;
-            margin-top: 32px;
-        }
-
-        .action-row .search-btn {
-            margin-top: 0;
-            flex: 1 1 auto;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 6px;
         }
 
         .refresh-btn,
         .export-btn {
-            flex: 0 0 auto;
+            min-height: 40px;
+            padding: 0 12px;
+            border: 0;
+            background: none;
+            color: var(--text-2);
+            font-size: 0.85rem;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 16px 22px;
-            font-size: 1rem;
-            font-weight: 600;
-            background: #ffffff;
-            color: #1e293b;
-            border: 2px solid #1e293b;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .refresh-btn:hover,
-        .export-btn:hover {
-            background: #f1f5f9;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 41, 59, 0.15);
-        }
-
-        .refresh-btn:active,
-        .export-btn:active {
-            transform: translateY(0);
+            gap: 6px;
+            border-radius: 999px;
         }
 
         .refresh-btn:disabled,
-        .export-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-            transform: none !important;
-            box-shadow: none !important;
-        }
+        .export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .refresh-btn .refresh-icon {
-            display: inline-block;
-            font-size: 1.1rem;
-            line-height: 1;
-        }
-
-        .refresh-btn.refreshing .refresh-icon {
-            animation: refresh-spin 0.9s linear infinite;
-        }
+        .refresh-icon { width: 15px; height: 15px; }
+        .refreshing .refresh-icon { animation: refresh-spin 0.9s linear infinite; }
 
         @keyframes refresh-spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
 
-        body.dark-mode .refresh-btn,
-        body.dark-mode .export-btn {
-            background: transparent;
-            color: #10b981;
-            border-color: #10b981;
-        }
-
-        body.dark-mode .refresh-btn:hover,
-        body.dark-mode .export-btn:hover {
-            background: rgba(16, 185, 129, 0.12);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
-        }
-
         .refresh-status {
-            margin-top: 12px;
-            font-size: 0.9rem;
-            color: #475569;
-            min-height: 1.2em;
-        }
-
-        .refresh-status.error {
-            color: #dc2626;
-        }
-
-        body.dark-mode .refresh-status {
-            color: #94a3b8;
-        }
-
-        body.dark-mode .refresh-status.error {
-            color: #f87171;
-        }
-
-        .results {
-            padding: 40px;
-            background: #f8f9fa;
-            transition: background-color 0.3s ease;
-        }
-
-        body.dark-mode .results {
-            background: #0f172a;
-        }
-
-        .loading {
             text-align: center;
-            padding: 80px 40px;
-            color: #718096;
-            font-size: 1rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+            min-height: 1.2em;
+            margin-top: 2px;
         }
+
+        .refresh-status.error { color: var(--danger); }
+
+        /* Results */
+        .results { margin-top: 28px; }
 
         .no-results {
             text-align: center;
-            padding: 80px 40px;
-            color: #a0aec0;
-            font-size: 1rem;
-            transition: color 0.3s ease;
+            padding: 40px 16px;
+            color: var(--muted);
+            font-size: 0.95rem;
         }
 
-        body.dark-mode .no-results {
-            color: #64748b;
+        .results-summary {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-bottom: 6px;
         }
 
-        .loading {
-            text-align: center;
-            padding: 80px 40px;
-            color: #718096;
-            font-size: 1rem;
-            transition: color 0.3s ease;
-        }
-
-        body.dark-mode .loading {
-            color: #94a3b8;
-        }
-
-        /* Clean animated loading spinner */
         .loading-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 100px 40px;
-            gap: 32px;
+            gap: 16px;
+            padding: 56px 16px;
         }
 
-        .search-icon-wrapper {
-            position: relative;
-            width: 80px;
-            height: 80px;
-        }
-
-        .search-icon {
-            width: 60px;
-            height: 60px;
-            margin: 10px auto;
-            animation: spinSearch 2s linear infinite;
-        }
-
-        .search-icon svg {
-            width: 100%;
-            height: 100%;
-            fill: none;
-            stroke: #10b981;
-            stroke-width: 4;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        body.dark-mode .search-icon svg {
-            stroke: #10b981;
-        }
-
-        .loading-dots {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            align-items: center;
-        }
+        .loading-dots { display: flex; gap: 8px; }
 
         .loading-dot {
-            width: 14px;
-            height: 14px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background: #10b981;
+            background: var(--muted);
             animation: bounce 1.4s ease-in-out infinite;
         }
 
-        body.dark-mode .loading-dot {
-            background: #10b981;
-        }
-
-        .loading-dot:nth-child(1) {
-            animation-delay: 0s;
-        }
-
-        .loading-dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .loading-dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        .loading-text {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #475569;
-            letter-spacing: 0.5px;
-        }
-
-        body.dark-mode .loading-text {
-            color: #cbd5e1;
-        }
-
-        @keyframes spinSearch {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+        .loading-text { color: var(--muted); font-size: 0.9rem; }
 
         @keyframes bounce {
-            0%, 80%, 100% {
-                transform: scale(0.8);
-                opacity: 0.5;
-            }
-            40% {
-                transform: scale(1.2);
-                opacity: 1;
-            }
+            0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
         }
 
-        .item-group {
-            margin-bottom: 28px;
-            background: white;
-            border-radius: 12px;
-            padding: 0;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        body.dark-mode .item-group {
-            background: #1e293b;
-            border-color: #475569;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-        }
-
+        .item-group { margin-bottom: 18px; }
+        .past-meal-group { opacity: 0.55; }
 
         .item-group-title {
-            font-weight: 700;
-            color: #1e293b;
-            margin: 0;
-            font-size: 0.875rem;
-            letter-spacing: 0.05em;
-            padding: 16px 24px;
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 2px 10px;
+            background: color-mix(in srgb, var(--bg) 88%, transparent);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
-            transition: all 0.3s ease;
-        }
-
-        body.dark-mode .item-group-title {
-            color: #f1f5f9;
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border-bottom-color: #475569;
-            font-weight: 800;
-        }
-
-        .item-group-title.past-meal {
-            opacity: 0.6;
-            color: #94a3b8;
-        }
-
-        body.dark-mode .item-group-title.past-meal {
-            opacity: 0.5;
-            color: #64748b;
+            color: var(--text-2);
         }
 
         .past-meal-badge {
-            display: inline-block;
-            background: #94a3b8;
-            color: white;
-            font-size: 0.65rem;
-            font-weight: 700;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
             padding: 2px 8px;
-            border-radius: 4px;
-            margin-left: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        body.dark-mode .past-meal-badge {
-            background: #64748b;
-            color: #e2e8f0;
-        }
-
-        .past-meal-group {
-            opacity: 0.7;
-        }
-
-        body.dark-mode .past-meal-group {
-            opacity: 0.6;
-        }
-
-        .item-group-content {
-            padding: 20px 24px;
-        }
-
-        /* Better mobile organization for results */
-        @media (max-width: 640px) {
-            .item-group-content {
-                padding: 16px 12px;
-            }
-
-            .menu-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-                padding: 14px 0;
-            }
-
-            .menu-item-name {
-                width: 100%;
-            }
-
-            .menu-item-name strong {
-                font-size: 0.9rem;
-            }
-
-            .menu-items-list {
-                margin-top: 8px;
-            }
-
-            .menu-item-icons {
-                align-self: flex-start;
-                margin-top: 8px;
-            }
         }
 
         .menu-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 16px 6px;
+            margin-bottom: 10px;
+        }
+
+        .servery-name {
             display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 16px 0;
-            border-bottom: 2px solid #cbd5e0;
-            transition: all 0.2s ease;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.02rem;
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
-        body.dark-mode .menu-item {
-            border-bottom-color: #475569;
+        .open-pill {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--open);
         }
 
-
-        .menu-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .menu-item:hover {
-            padding-left: 12px;
-            background: linear-gradient(to right, #f8fafc 0%, transparent 100%);
-            margin: 0 -24px;
-            padding-left: 36px;
-            padding-right: 24px;
-        }
-
-        body.dark-mode .menu-item:hover {
-            background: linear-gradient(to right, rgba(51, 65, 85, 0.5) 0%, transparent 100%);
-        }
-
-        .menu-item-name {
-            flex: 1;
-            color: #334155;
-            font-size: 0.9375rem;
-            line-height: 1.6;
-            transition: color 0.3s ease;
-        }
-
-        body.dark-mode .menu-item-name {
-            color: #e2e8f0;
-        }
-
-        .menu-item-name strong {
-            color: #0ea5e9;
-            font-weight: 700;
-            margin-right: 10px;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            transition: color 0.3s ease;
-            display: block;
-            margin-bottom: 8px;
-            border-bottom: 2px solid #10b981;
-            padding-bottom: 4px;
-        }
-
-        body.dark-mode .menu-item-name strong {
-            color: #60a5fa;
-            font-weight: 800;
-            border-bottom-color: #10b981;
-        }
-
-        .servery-name.servery-name-open {
-            color: #10b981 !important;
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
-            padding: 4px 12px;
-            border-radius: 6px;
-            border-bottom: 2px solid #10b981 !important;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-            animation: pulse-open 2s ease-in-out infinite;
-        }
-
-        body.dark-mode .servery-name.servery-name-open {
-            color: #34d399 !important;
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.1) 100%);
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
-        }
-
-        @keyframes pulse-open {
-            0%, 100% {
-                box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-            }
-            50% {
-                box-shadow: 0 2px 12px rgba(16, 185, 129, 0.4);
-            }
-        }
-
-        .menu-items-list {
-            list-style: none;
-            margin: 4px 0 0;
-            padding: 0;
-        }
+        .menu-items-list { list-style: none; }
 
         .menu-items-list-item {
-            color: #334155;
-            transition: color 0.3s ease;
+            padding: 10px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .menu-items-list-item:first-child { border-top: 0; }
+
+        .dish-line {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        body.dark-mode .menu-items-list-item {
-            color: #e2e8f0;
-            border-bottom-color: #475569;
-        }
-
-        .menu-items-list-item:last-child {
-            border-bottom: none;
-        }
-
-        .menu-item-icons {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-            align-items: center;
-        }
-
-        .item-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
-        }
-
-        .cuisine-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            margin-top: 4px;
-            max-height: 200px;
-            overflow-y: auto;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-        }
-
-        body.dark-mode .cuisine-suggestions {
-            background: #1e293b;
-            border-color: #475569;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .cuisine-suggestion {
-            padding: 12px 16px;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background 0.15s ease;
-            color: #2d3748;
-        }
-
-        body.dark-mode .cuisine-suggestion {
-            color: #e2e8f0;
-            border-bottom-color: #334155;
-        }
-
-        .cuisine-suggestion:last-child {
-            border-bottom: none;
-        }
-
-        .cuisine-suggestion:hover {
-            background: #f8fafc;
-        }
-
-        body.dark-mode .cuisine-suggestion:hover {
-            background: #334155;
-        }
-
-        .cuisine-suggestion.selected {
-            background: #f0f9ff;
-        }
-
-        body.dark-mode .cuisine-suggestion.selected {
-            background: #475569;
-        }
-
-        .cuisine-chips {
-            min-height: 32px;
-        }
-
-        .cuisine-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .cuisine-chip-remove {
-            cursor: pointer;
-            margin-left: 4px;
-            font-weight: 700;
-            opacity: 0.8;
-            transition: opacity 0.15s ease;
-        }
-
-        .cuisine-chip-remove:hover {
-            opacity: 1;
-        }
-
-        .cuisine-legend {
-            margin-top: 8px;
-            font-size: 12px;
-            color: #64748b;
-            display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
+            gap: 6px 8px;
         }
 
-        .cuisine-legend-label {
-            font-weight: 500;
-            margin-right: 4px;
+        .dish-name { font-size: 0.95rem; color: var(--text); }
+        .dish-tags { display: inline-flex; gap: 4px; }
+
+        .dish-allergens {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 2px;
         }
 
-        .cuisine-legend-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 2px 6px;
-            border-radius: 999px;
-            background: #f8fafc;
-        }
-
-        .cuisine-dot-legend {
-            width: 10px;
-            height: 10px;
-            border-radius: 999px;
-            display: inline-block;
-        }
-
-        /* Now Open Chip - Small button on right */
-        .now-open-chip {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 6px;
-            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
-            z-index: 1000;
-            cursor: pointer;
-            font-size: 0.7rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            white-space: nowrap;
-            overflow: visible;
-            display: none;
-            min-width: 140px;
-        }
-
-        .now-open-chip.expanded {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            width: auto;
-            min-width: 180px;
-            max-width: 250px;
-            padding: 12px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-            overflow: visible;
-            white-space: normal;
-        }
-
-
-        .now-open-chip-content {
-            display: none;
-        }
-
-        .now-open-chip.expanded .now-open-chip-content {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
-            flex: 1;
-        }
-
-        .now-open-chip-close {
-            display: none;
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            line-height: 1;
-            transition: background 0.2s ease;
-            z-index: 10;
-        }
-
-        .now-open-chip.expanded .now-open-chip-close {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .now-open-chip-close:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .now-open-chip-count {
-            background: rgba(255, 255, 255, 0.25);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            align-self: flex-start;
-        }
-
-        .now-open-chip-list {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            width: 100%;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .now-open-chip-item {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            white-space: nowrap;
-        }
-
-        body.dark-mode .now-open-chip {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5);
-        }
-
-        @media (max-width: 640px) {
-            .now-open-chip {
-                top: 60px;
-                right: 10px;
-                padding: 5px 10px;
-                font-size: 0.65rem;
-                min-width: 120px;
-            }
-
-            .now-open-chip.expanded {
-                min-width: 160px;
-                max-width: 200px;
-                padding: 10px;
-                right: 10px;
-            }
-
-            .now-open-chip-item {
-                font-size: 0.65rem;
-                padding: 3px 6px;
-            }
-
-            .now-open-chip-count {
-                font-size: 0.7rem;
-                padding: 2px 6px;
-            }
-        }
-
-        .now-open-chip:hover {
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-        }
-
-        @media (max-width: 640px) {
-            body {
-                padding: 8px;
-            }
-
-            .dark-mode-toggle {
-                top: 10px;
-                right: 10px;
-                padding: 6px 10px;
-                font-size: 0.7rem;
-                font-weight: 700;
-                background: rgba(255, 255, 255, 0.3) !important;
-                border: 2px solid rgba(255, 255, 255, 0.6) !important;
-                max-width: 110px;
-            }
-
-            .current-time-badge {
-                top: 10px;
-                left: 10px;
-                padding: 5px 8px;
-                font-size: 0.65rem;
-                font-weight: 700;
-                max-width: 110px;
-            }
-
-            .container {
-                margin: 12px auto 24px;
-                border-radius: 14px;
-            }
-
-            .header {
-                padding: 28px 18px;
-            }
-
-            .header h1 {
-                font-size: 1.6rem;
-            }
-
-            .header p {
-                font-size: 0.9rem;
-            }
-
-            .filters {
-                padding: 18px 18px 22px;
-            }
-
-            .results {
-                padding: 18px 14px 24px;
-            }
-
-            .filter-group {
-                margin-bottom: 20px;
-            }
-
-            .filter-input {
-                padding: 10px 12px;
-                font-size: 0.9rem;
-            }
-
-            /* Stack cuisine input and dropdown on mobile */
-            .filter-group > div > div[style*="grid"] {
-                grid-template-columns: 1fr !important;
-            }
-
-            #cuisine-dropdown {
-                width: 100% !important;
-                min-width: unset !important;
-            }
-
-            .cuisine-chips {
-                gap: 6px;
-            }
-
-            .cuisine-chip {
-                font-size: 0.8rem;
-                padding: 5px 10px;
-            }
-
-            .cuisine-legend {
-                font-size: 11px;
-            }
-
-            .dietary-icons {
-                gap: 8px;
-            }
-
-            .icon-option {
-                padding: 8px 10px;
-                font-size: 0.8rem;
-            }
-
-            .icon-circle {
-                width: 20px;
-                height: 20px;
-            }
-
-            select.filter-input {
-                min-height: 40px;
-            }
-
-            .search-btn {
-                font-size: 0.95rem;
-                padding: 10px 16px;
-                border-radius: 999px;
-                margin-top: 4px;
-            }
-
-            .action-row {
-                flex-direction: column;
-                gap: 8px;
-                margin-top: 12px;
-            }
-
-            .refresh-btn,
-            .export-btn {
-                font-size: 0.95rem;
-                padding: 10px 16px;
-                border-radius: 999px;
-            }
-
-            .item-group {
-                padding: 14px 12px 10px;
-            }
-
-            .item-group-title {
-                font-size: 0.85rem;
-            }
-
-            .menu-item-name {
-                font-size: 0.85rem;
-            }
-
-            .time-filter-group {
-                padding: 16px;
-                margin-bottom: 24px;
-            }
-
-            .time-filter-group label {
-                font-size: 1rem;
-            }
-
-            .servery-filter-group {
-                padding: 16px;
-                margin-bottom: 24px;
-            }
-
-            .servery-filter-group label {
-                font-size: 1rem;
-            }
-
-            .servery-option {
-                padding: 10px 12px;
-                font-size: 0.9rem;
-                min-width: 0;
-                justify-content: center;
-                text-align: center;
-                white-space: nowrap;
-            }
-
-            /* Short labels on phones so every chip stays one line tall */
-            .servery-option .servery-label-full { display: none; }
-            .servery-option .servery-label-short { display: inline; }
-
-            /* Two equal columns on mobile so every servery chip is the same size
-               (with flex, the last chip alone on a row stretched to full width) */
-            .servery-filter-group > div[style*="display: flex"] {
-                display: grid !important;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 8px !important;
-            }
-
-            /* Ensure servery chips wrap properly on mobile */
-            #servery-chips {
-                gap: 6px;
-            }
-
-            .loading-container {
-                padding: 80px 20px;
-                gap: 24px;
-            }
-
-            .search-icon-wrapper {
-                width: 60px;
-                height: 60px;
-            }
-
-            .search-icon {
-                width: 45px;
-                height: 45px;
-            }
-
-            .search-icon svg {
-                stroke-width: 3;
-            }
-
-            .loading-dot {
-                width: 12px;
-                height: 12px;
-            }
-
-            .loading-text {
-                font-size: 1rem;
-            }
+        @media (min-width: 720px) {
+            .filters { padding: 2px 24px; }
+            .intro { padding: 24px 0 28px; }
         }
     </style>
 </head>
 <body>
-    <div class="now-open-chip" id="now-open-chip" onclick="toggleOpenChip()">
-        <span id="now-open-chip-label">Show Open Serveries</span>
-        <div class="now-open-chip-content">
-            <span class="now-open-chip-count" id="now-open-count">0 Open</span>
-            <div class="now-open-chip-list" id="now-open-list"></div>
-        </div>
-        <button class="now-open-chip-close" onclick="event.stopPropagation(); toggleOpenChip();" aria-label="Close">×</button>
-    </div>
+{% include "_header.html" %}
 
-    <div class="container">
-        <div class="header">
-            <div class="current-time-badge" id="current-time-badge">Loading time...</div>
-            <button class="dark-mode-toggle" id="dark-mode-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
-            <h1>OwlUCanEat</h1>
-            <p>Find the best serveries for your preferences</p>
-        </div>
+    <main class="page">
+        <section class="intro">
+            <h1 class="page-title">This week's menus</h1>
+            <p class="page-subtitle">Search all serveries by dish, cuisine or diet.</p>
+            <button class="open-status" id="open-status" type="button" aria-expanded="false" aria-controls="open-list" onclick="toggleOpenList()">
+                <span id="open-status-text">Loading…</span>
+                <span class="sep">·</span>
+                <span id="current-time-badge"></span>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="open-list" id="open-list" hidden></div>
+        </section>
 
-        <div class="filters">
-            <div class="filter-group time-filter-group">
-                <label>Time Filter</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                    <div>
-                        <select id="day" class="filter-input">
-                            <option value="">All Days</option>
+        <section class="card filters" aria-label="Filters">
+            <div class="field">
+                <div class="field-head"><span class="section-label">When</span></div>
+                <div class="select-row">
+                    <div class="select-wrap">
+                        <select id="day" class="filter-input" aria-label="Day">
+                            <option value="">Any day</option>
                             <option value="monday">Monday</option>
                             <option value="tuesday">Tuesday</option>
                             <option value="wednesday">Wednesday</option>
@@ -1679,9 +365,9 @@
                             <option value="sunday">Sunday</option>
                         </select>
                     </div>
-                    <div>
-                        <select id="meal" class="filter-input">
-                            <option value="">All Meals</option>
+                    <div class="select-wrap">
+                        <select id="meal" class="filter-input" aria-label="Meal">
+                            <option value="">Any meal</option>
                             <option value="lunch">Lunch</option>
                             <option value="munch">Munch</option>
                             <option value="dinner">Dinner</option>
@@ -1690,340 +376,156 @@
                 </div>
             </div>
 
-            <div class="filter-group servery-filter-group">
-                <label>Servery Filter</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
-                    <div class="servery-option servery-option-all selected" data-servery="all">
-                        <span class="servery-label-full">All Serveries</span><span class="servery-label-short">All</span>
-                    </div>
-                    <div class="servery-option" data-servery="north">
-                        <span class="servery-label-full">North Servery</span><span class="servery-label-short">North</span>
-                    </div>
-                    <div class="servery-option" data-servery="south">
-                        <span class="servery-label-full">South Servery</span><span class="servery-label-short">South</span>
-                    </div>
-                    <div class="servery-option" data-servery="west">
-                        <span class="servery-label-full">West Servery</span><span class="servery-label-short">West</span>
-                    </div>
-                    <div class="servery-option" data-servery="seibel">
-                        <span class="servery-label-full">Seibel Servery</span><span class="servery-label-short">Seibel</span>
-                    </div>
-                    <div class="servery-option" data-servery="baker">
-                        <span class="servery-label-full">Baker College Kitchen</span><span class="servery-label-short">Baker</span>
-                    </div>
-                    <div class="servery-option" data-servery="south main">
-                        <span class="servery-label-full">South Main Servery</span><span class="servery-label-short">South Main</span>
-                    </div>
-                </div>
-                <div id="servery-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
-            </div>
-
-            <div class="filter-group cuisine-filter-group">
-                <label for="cuisine">Cuisine Preference</label>
-                <div style="position: relative;">
-                    <div class="search-input-wrapper">
-                        <input type="text" id="cuisine" class="filter-input" placeholder="Type to search or select from dropdown..." autocomplete="off">
-                        <svg class="search-magnifier" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 8px;">
-                        <select id="cuisine-dropdown" class="filter-input" style="width: auto; min-width: 180px; cursor: pointer; padding-right: 18px;">
-                            <option value="">All Cuisines</option>
-                        </select>
-                    </div>
-                    <div id="cuisine-suggestions" class="cuisine-suggestions" style="display: none;"></div>
-                </div>
-                <div id="cuisine-chips" class="cuisine-chips" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
-                <div id="cuisine-legend" class="cuisine-legend"></div>
-            </div>
-
-            <div class="filter-group item-filter-group">
-                <label for="item">Search Specific Item (Optional)</label>
-                <input type="text" id="item" class="filter-input" placeholder="example: paneer, pad thai, biryani">
-            </div>
-
-            <div class="filter-group">
-                <label>Dietary Restrictions</label>
-                
-                <!-- Include Section: Show items WITH these tags -->
-                <div style="margin-bottom: 24px; padding: 16px; background: #1e293b; border-radius: 10px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <span style="font-weight: 700; color: white; font-size: 0.95rem;">✅ Show items WITH these:</span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: white; margin-bottom: 12px; line-height: 1.5;">
-                        Select tags to find food that contains them. Example: Select "Vegan" to see only vegan items.
-                    </div>
-                    
-                    <!-- AND/OR Mode for Include -->
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                        <span style="font-size: 12px; color: white; font-weight: 600;">If you pick more than one tag, combine using:</span>
-                        <div style="display: inline-flex; gap: 6px;">
-                            <button id="dietary-mode-and" type="button" class="dietary-mode-btn">AND (all tags)</button>
-                            <button id="dietary-mode-or" type="button" class="dietary-mode-btn active">OR (any tag)</button>
-                        </div>
-                    </div>
-                    
-                    <div class="dietary-icons dietary-icons-include" id="dietary-icons-include">
-                    <div class="icon-option" data-dietary="vegan">
-                        <div class="icon-circle icon-vegan">V</div>
-                        <span>Vegan</span>
-                    </div>
-                    <div class="icon-option" data-dietary="vegetarian">
-                        <div class="icon-circle icon-vegetarian">V</div>
-                        <span>Vegetarian</span>
-                    </div>
-                    <div class="icon-option" data-dietary="halal">
-                        <div class="icon-circle icon-halal">H</div>
-                        <span>Halal</span>
-                    </div>
-                    <div class="icon-option" data-dietary="gluten">
-                        <div class="icon-circle icon-gluten">🌾</div>
-                        <span>Gluten</span>
-                    </div>
-                    <div class="icon-option" data-dietary="soy">
-                        <div class="icon-circle icon-soy">🫘</div>
-                        <span>Soy</span>
-                    </div>
-                    <div class="icon-option" data-dietary="dairy">
-                        <div class="icon-circle icon-dairy">🥛</div>
-                        <span>Dairy</span>
-                    </div>
-                    <div class="icon-option" data-dietary="eggs">
-                        <div class="icon-circle icon-eggs">🥚</div>
-                        <span>Eggs</span>
-                    </div>
-                    <div class="icon-option" data-dietary="fish">
-                        <div class="icon-circle icon-fish">🐟</div>
-                        <span>Fish</span>
-                    </div>
-                    <div class="icon-option" data-dietary="shellfish">
-                        <div class="icon-circle icon-shellfish">🦞</div>
-                        <span>Shellfish</span>
-                    </div>
-                    <div class="icon-option" data-dietary="peanuts">
-                        <div class="icon-circle icon-peanuts">🥜</div>
-                        <span>Peanuts</span>
-                    </div>
-                    <div class="icon-option" data-dietary="tree nuts">
-                        <div class="icon-circle icon-tree-nuts">🌰</div>
-                        <span>Tree Nuts</span>
-                    </div>
-                    <div class="icon-option" data-dietary="sesame">
-                        <div class="icon-circle icon-sesame">🌾</div>
-                        <span>Sesame</span>
-                    </div>
-                </div>
-                </div>
-
-                <!-- Exclude Section: Show items WITHOUT these tags -->
-                <div style="margin-top: 24px; padding: 16px; background: #1e293b; border-radius: 10px;">
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                        <span style="font-weight: 700; color: white; font-size: 0.95rem;">❌ Show items WITHOUT these (for allergies):</span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: white; margin-bottom: 12px; line-height: 1.5;">
-                        Select tags to find food that does NOT contain them. Example: Select "Peanuts" if you're allergic to see only items with no peanuts.
-                    </div>
-                    
-                    <div class="dietary-icons dietary-icons-exclude" id="dietary-icons-exclude">
-                        <div class="icon-option" data-dietary="vegan">
-                            <div class="icon-circle icon-vegan">V</div>
-                            <span>Vegan</span>
-                        </div>
-                        <div class="icon-option" data-dietary="vegetarian">
-                            <div class="icon-circle icon-vegetarian">V</div>
-                            <span>Vegetarian</span>
-                        </div>
-                        <div class="icon-option" data-dietary="halal">
-                            <div class="icon-circle icon-halal">H</div>
-                            <span>Halal</span>
-                        </div>
-                        <div class="icon-option" data-dietary="gluten">
-                            <div class="icon-circle icon-gluten">🌾</div>
-                            <span>Gluten</span>
-                        </div>
-                        <div class="icon-option" data-dietary="soy">
-                            <div class="icon-circle icon-soy">🫘</div>
-                            <span>Soy</span>
-                        </div>
-                        <div class="icon-option" data-dietary="dairy">
-                            <div class="icon-circle icon-dairy">🥛</div>
-                            <span>Dairy</span>
-                        </div>
-                        <div class="icon-option" data-dietary="eggs">
-                            <div class="icon-circle icon-eggs">🥚</div>
-                            <span>Eggs</span>
-                        </div>
-                        <div class="icon-option" data-dietary="fish">
-                            <div class="icon-circle icon-fish">🐟</div>
-                            <span>Fish</span>
-                        </div>
-                        <div class="icon-option" data-dietary="shellfish">
-                            <div class="icon-circle icon-shellfish">🦞</div>
-                            <span>Shellfish</span>
-                        </div>
-                        <div class="icon-option" data-dietary="peanuts">
-                            <div class="icon-circle icon-peanuts">🥜</div>
-                            <span>Peanuts</span>
-                        </div>
-                        <div class="icon-option" data-dietary="tree nuts">
-                            <div class="icon-circle icon-tree-nuts">🌰</div>
-                            <span>Tree Nuts</span>
-                        </div>
-                        <div class="icon-option" data-dietary="sesame">
-                            <div class="icon-circle icon-sesame">🌾</div>
-                            <span>Sesame</span>
-                        </div>
-                    </div>
+            <div class="field">
+                <div class="field-head"><span class="section-label">Servery</span></div>
+                <div class="pill-grid">
+                    <button type="button" class="pill servery-option servery-option-all selected" data-servery="all">All</button>
+                    <button type="button" class="pill servery-option" data-servery="north">North</button>
+                    <button type="button" class="pill servery-option" data-servery="south">South</button>
+                    <button type="button" class="pill servery-option" data-servery="west">West</button>
+                    <button type="button" class="pill servery-option" data-servery="seibel">Seibel</button>
+                    <button type="button" class="pill servery-option" data-servery="baker">Baker</button>
+                    <button type="button" class="pill servery-option" data-servery="south main">South Main</button>
                 </div>
             </div>
 
+            <div class="field">
+                <div class="field-head"><span class="section-label">Cuisine</span></div>
+                <div class="pill-grid" id="cuisine-options"></div>
+            </div>
 
-            <div class="action-row">
-                <button class="search-btn" id="search-btn" onclick="search()">Search Serveries</button>
-                <button class="refresh-btn" id="refresh-btn" onclick="refreshMenus()" title="Re-download this week's menus from dining.rice.edu (ignores the cached copy)">
-                    <span class="refresh-icon" aria-hidden="true">&#x21bb;</span>
-                    <span>Refresh</span>
+            <div class="field">
+                <div class="field-head"><label class="section-label" for="item">Dish</label></div>
+                <input type="text" id="item" class="filter-input" placeholder="Paneer, pad thai, biryani…" autocomplete="off" enterkeyhint="search">
+            </div>
+
+            <div class="field">
+                <div class="field-head">
+                    <span class="section-label">Only show</span>
+                    <div class="segmented" role="group" aria-label="When several are picked, match">
+                        <button id="dietary-mode-or" type="button" class="dietary-mode-btn active">Any</button>
+                        <button id="dietary-mode-and" type="button" class="dietary-mode-btn">All</button>
+                    </div>
+                </div>
+                <div class="pill-grid dietary-icons-include" id="dietary-icons-include">
+                    <button type="button" class="pill icon-option" data-dietary="vegan"><span class="tag tag-vegan">VG</span>Vegan</button>
+                    <button type="button" class="pill icon-option" data-dietary="vegetarian"><span class="tag tag-vegetarian">V</span>Vegetarian</button>
+                    <button type="button" class="pill icon-option" data-dietary="halal"><span class="tag tag-halal">H</span>Halal</button>
+                    <button type="button" class="pill icon-option" data-dietary="gluten">Gluten</button>
+                    <button type="button" class="pill icon-option" data-dietary="soy">Soy</button>
+                    <button type="button" class="pill icon-option" data-dietary="dairy">Dairy</button>
+                    <button type="button" class="pill icon-option" data-dietary="eggs">Eggs</button>
+                    <button type="button" class="pill icon-option" data-dietary="fish">Fish</button>
+                    <button type="button" class="pill icon-option" data-dietary="shellfish">Shellfish</button>
+                    <button type="button" class="pill icon-option" data-dietary="peanuts">Peanuts</button>
+                    <button type="button" class="pill icon-option" data-dietary="tree nuts">Tree nuts</button>
+                    <button type="button" class="pill icon-option" data-dietary="sesame">Sesame</button>
+                </div>
+
+                <div class="field-head field-sub"><span class="section-label">Leave out</span></div>
+                <div class="pill-grid dietary-icons-exclude" id="dietary-icons-exclude">
+                    <button type="button" class="pill icon-option" data-dietary="gluten">Gluten</button>
+                    <button type="button" class="pill icon-option" data-dietary="soy">Soy</button>
+                    <button type="button" class="pill icon-option" data-dietary="dairy">Dairy</button>
+                    <button type="button" class="pill icon-option" data-dietary="eggs">Eggs</button>
+                    <button type="button" class="pill icon-option" data-dietary="fish">Fish</button>
+                    <button type="button" class="pill icon-option" data-dietary="shellfish">Shellfish</button>
+                    <button type="button" class="pill icon-option" data-dietary="peanuts">Peanuts</button>
+                    <button type="button" class="pill icon-option" data-dietary="tree nuts">Tree nuts</button>
+                    <button type="button" class="pill icon-option" data-dietary="sesame">Sesame</button>
+                    <button type="button" class="pill icon-option" data-dietary="vegan">Vegan</button>
+                    <button type="button" class="pill icon-option" data-dietary="vegetarian">Vegetarian</button>
+                    <button type="button" class="pill icon-option" data-dietary="halal">Halal</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="actions">
+            <button class="search-btn" id="search-btn" type="button" onclick="search()">Search</button>
+            <div class="quiet-actions">
+                <button class="refresh-btn" id="refresh-btn" type="button" onclick="refreshMenus()" title="Re-download this week's menus from dining.rice.edu">
+                    <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+                    Refresh menus
                 </button>
-                <button class="export-btn" id="export-btn" onclick="exportPdf()" title="Download the menu matching the current filters as a phone-friendly PDF">
-                    <span class="refresh-icon" aria-hidden="true">&#x2193;</span>
-                    <span>Export PDF</span>
+                <button class="export-btn" id="export-btn" type="button" onclick="exportPdf()" title="Download the menu matching the current filters as a PDF">
+                    <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+                    Save as PDF
                 </button>
             </div>
             <div class="refresh-status" id="refresh-status" aria-live="polite"></div>
         </div>
 
         <div class="results" id="results">
-            <div class="no-results">
-                Enter your preferences above and click "Search Serveries" to find matching items
-            </div>
+            <div class="no-results">Choose filters, then tap Search.</div>
         </div>
-    </div>
+    </main>
 
     <script>
-        // Dark mode functionality - default to dark mode
-        function initDarkMode() {
-            // Check if user has explicitly set a preference
-            const userPreference = localStorage.getItem('darkMode');
-            if (userPreference === null) {
-                // No preference set, default to dark mode
-                document.body.classList.add('dark-mode');
-                localStorage.setItem('darkMode', 'true');
-                updateDarkModeButton(true);
-            } else {
-                // Use saved preference
-                const darkMode = userPreference === 'true';
-                if (darkMode) {
-                    document.body.classList.add('dark-mode');
-                    updateDarkModeButton(true);
-                }
-            }
+        function escapeHtml(text) {
+            return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
         }
 
-        function toggleDarkMode() {
-            const isDark = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('darkMode', isDark);
-            updateDarkModeButton(isDark);
+        function titleCase(text) {
+            return String(text).replace(/\b\w/g, ch => ch.toUpperCase());
         }
 
-        function updateDarkModeButton(isDark) {
-            const btn = document.getElementById('dark-mode-toggle');
-            btn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+        // "wednesday", "08:04 AM" -> "Wed 8:04 AM"
+        function formatClock(day, time) {
+            return `${titleCase(day).slice(0, 3)} ${time.replace(/^0/, '')}`;
         }
 
-        // Initialize dark mode on load
-        initDarkMode();
-
-        // Now Open Chip functionality
-        let chipExpanded = false;
-        let chipAutoCollapseTimeout = null;
-
+        // Open-now status line
         async function loadCurrentlyOpen() {
             try {
                 const response = await fetch('/api/currently-open');
                 const data = await response.json();
-                const chip = document.getElementById('now-open-chip');
-                const countEl = document.getElementById('now-open-count');
-                const listEl = document.getElementById('now-open-list');
-                const labelEl = document.getElementById('now-open-chip-label');
+                const text = document.getElementById('open-status-text');
+                const list = document.getElementById('open-list');
 
-                if (data.count > 0) {
-                    chip.style.display = 'block';
-                    countEl.textContent = `${data.count} Open Now`;
-                    
-                    // Build list of open serveries
-                    listEl.innerHTML = data.open_serveries.map(item => 
-                        `<div class="now-open-chip-item">${item.servery}: ${item.meal}</div>`
-                    ).join('');
-                } else {
-                    chip.style.display = 'none';
-                }
+                text.textContent = data.count > 0
+                    ? `${data.count} open now`
+                    : 'All serveries closed';
+                list.innerHTML = data.open_serveries.map(item =>
+                    `<span class="open-list-item"><b>${escapeHtml(item.servery)}</b> · ${escapeHtml(item.meal)}</span>`
+                ).join('');
             } catch (error) {
                 console.error('Failed to load currently open serveries:', error);
             }
         }
 
-        function toggleOpenChip() {
-            const chip = document.getElementById('now-open-chip');
-            const labelEl = document.getElementById('now-open-chip-label');
-            
-            if (chipExpanded) {
-                // Collapse
-                chip.classList.remove('expanded');
-                labelEl.style.display = 'inline';
-                chipExpanded = false;
-                if (chipAutoCollapseTimeout) {
-                    clearTimeout(chipAutoCollapseTimeout);
-                    chipAutoCollapseTimeout = null;
-                }
-            } else {
-                // Expand
-                chip.classList.add('expanded');
-                labelEl.style.display = 'none';
-                chipExpanded = true;
-                
-                // Auto-collapse after 5 seconds
-                chipAutoCollapseTimeout = setTimeout(() => {
-                    chip.classList.remove('expanded');
-                    labelEl.style.display = 'inline';
-                    chipExpanded = false;
-                }, 4000);
-            }
+        function toggleOpenList() {
+            const status = document.getElementById('open-status');
+            const list = document.getElementById('open-list');
+            if (!list.children.length) return;
+            const expanded = status.getAttribute('aria-expanded') !== 'true';
+            status.setAttribute('aria-expanded', expanded);
+            list.hidden = !expanded;
         }
 
-        // Load currently open on page load
         loadCurrentlyOpen();
-
-        // Update every minute
         setInterval(loadCurrentlyOpen, 60000);
 
-        // Fetch current time immediately on page load (fast endpoint)
         async function loadCurrentTime() {
             try {
                 const response = await fetch('/api/current-time');
                 const data = await response.json();
-                const timeBadge = document.getElementById('current-time-badge');
-                if (timeBadge && data.day && data.time) {
-                    timeBadge.textContent = `${data.day.charAt(0).toUpperCase() + data.day.slice(1)} ${data.time} ${data.timezone}`;
+                if (data.day && data.time) {
+                    document.getElementById('current-time-badge').textContent = formatClock(data.day, data.time);
                 }
             } catch (error) {
                 console.error('Failed to load current time:', error);
             }
         }
 
-        // Load time immediately when page loads
         loadCurrentTime();
-
-        // Update time every minute
         setInterval(loadCurrentTime, 60000);
 
         let selectedDietariesInclude = []; // Items that MUST contain these
         let selectedDietariesExclude = []; // Items that MUST NOT contain these
         let dietaryMode = 'or'; // 'and' = Match ALL, 'or' = Match ANY (for include only)
         let selectedCuisines = [];
-        let selectedServeries = []; // Selected individual serveries (if all 5 are selected, auto-switches to "All Serveries")
-        let allServeriesSelected = true; // "All Serveries" is selected by default
+        let selectedServeries = []; // Selected individual serveries (if all are selected, auto-switches to "All")
+        let allServeriesSelected = true; // "All" is selected by default
         // Get supported cuisines from backend
         const CUISINE_OPTIONS = {{ supported_cuisines | tojson }};
 
@@ -2043,7 +545,7 @@
             greek: '#3b82f6'
         };
 
-        // Handle dietary mode toggle (AND / OR) - only for include mode
+        // Handle dietary mode toggle (Any / All) - only for include mode
         const dietaryModeAndBtn = document.getElementById('dietary-mode-and');
         const dietaryModeOrBtn = document.getElementById('dietary-mode-or');
 
@@ -2059,383 +561,105 @@
             dietaryModeAndBtn.classList.remove('active');
         });
 
-        // Handle dietary icon clicks for INCLUDE section
-        document.querySelectorAll('#dietary-icons-include .icon-option').forEach(option => {
-            option.addEventListener('click', function() {
-                const value = this.dataset.dietary;
-                // Toggle this dietary filter on/off
-                if (this.classList.contains('selected')) {
-                    this.classList.remove('selected');
-                    selectedDietariesInclude = selectedDietariesInclude.filter(d => d !== value);
-                } else {
-                    this.classList.add('selected');
-                    if (!selectedDietariesInclude.includes(value)) {
-                        selectedDietariesInclude.push(value);
-                    }
-                }
-            });
-        });
-
-        // Handle dietary icon clicks for EXCLUDE section
-        document.querySelectorAll('#dietary-icons-exclude .icon-option').forEach(option => {
-            option.addEventListener('click', function() {
-                const value = this.dataset.dietary;
-                // Toggle this dietary exclusion on/off
-                if (this.classList.contains('selected')) {
-                    this.classList.remove('selected');
-                    selectedDietariesExclude = selectedDietariesExclude.filter(d => d !== value);
-                } else {
-                    this.classList.add('selected');
-                    if (!selectedDietariesExclude.includes(value)) {
-                        selectedDietariesExclude.push(value);
-                    }
-                }
-            });
-        });
-
-        // Cuisine autocomplete and dropdown
-        const cuisineInput = document.getElementById('cuisine');
-        const cuisineDropdown = document.getElementById('cuisine-dropdown');
-        const cuisineSuggestions = document.getElementById('cuisine-suggestions');
-        const cuisineChips = document.getElementById('cuisine-chips');
-        const cuisineLegend = document.getElementById('cuisine-legend');
-        let selectedSuggestionIndex = -1;
-
-        // Populate dropdown with all cuisine options
-        CUISINE_OPTIONS.forEach(cuisine => {
-            const option = document.createElement('option');
-            option.value = cuisine;
-            option.textContent = cuisine;
-            cuisineDropdown.appendChild(option);
-        });
-
-        // Handle dropdown selection
-        cuisineDropdown.addEventListener('change', function() {
-            const selectedCuisine = this.value;
-            if (selectedCuisine && selectedCuisine !== '') {
-                addCuisine(selectedCuisine);
-                this.value = ''; // Reset dropdown
-                cuisineSuggestions.style.display = 'none'; // Close suggestions
-            }
-        });
-
-        function showCuisineSuggestions(query = '') {
-            const queryLower = query.toLowerCase().trim();
-            let matches;
-
-            if (queryLower.length === 0) {
-                // Show all cuisines when search bar is empty
-                matches = CUISINE_OPTIONS.filter(cuisine => 
-                    !selectedCuisines.includes(cuisine)
-                );
-            } else {
-                // Filter cuisines when typing
-                matches = CUISINE_OPTIONS.filter(cuisine => 
-                    cuisine.toLowerCase().includes(queryLower) && 
-                    !selectedCuisines.includes(cuisine)
-                ).slice(0, 5);
-            }
-
-            if (matches.length === 0) {
-                cuisineSuggestions.style.display = 'none';
-                return;
-            }
-
-            cuisineSuggestions.innerHTML = matches.map((cuisine, index) => 
-                `<div class="cuisine-suggestion" data-cuisine="${cuisine}" data-index="${index}">${cuisine}</div>`
-            ).join('');
-
-            cuisineSuggestions.style.display = 'block';
-            selectedSuggestionIndex = -1;
-
-            // Add click handlers
-            document.querySelectorAll('.cuisine-suggestion').forEach(suggestion => {
-                suggestion.addEventListener('click', function() {
-                    addCuisine(this.dataset.cuisine);
+        // Dietary pills: toggle into the include / exclude lists
+        function bindDietaryPills(containerId, getList, setList) {
+            document.querySelectorAll(`#${containerId} .icon-option`).forEach(option => {
+                option.addEventListener('click', function() {
+                    const value = this.dataset.dietary;
+                    const selected = this.classList.toggle('selected');
+                    setList(selected
+                        ? [...getList().filter(d => d !== value), value]
+                        : getList().filter(d => d !== value));
                 });
             });
         }
 
-        cuisineInput.addEventListener('input', function() {
-            showCuisineSuggestions(this.value);
-        });
+        bindDietaryPills('dietary-icons-include', () => selectedDietariesInclude, list => { selectedDietariesInclude = list; });
+        bindDietaryPills('dietary-icons-exclude', () => selectedDietariesExclude, list => { selectedDietariesExclude = list; });
 
-        // Show all cuisines when search bar is focused and empty
-        cuisineInput.addEventListener('focus', function() {
-            if (this.value.trim().length === 0) {
-                showCuisineSuggestions('');
-            }
-        });
+        // Cuisine pills
+        const cuisineOptions = document.getElementById('cuisine-options');
+        cuisineOptions.innerHTML = CUISINE_OPTIONS.map(cuisine => {
+            const color = CUISINE_COLOR_MAP[cuisine.toLowerCase()] || '#6b7280';
+            return `<button type="button" class="pill" data-cuisine="${escapeHtml(cuisine)}"><span class="cuisine-dot" style="background:${color}"></span>${escapeHtml(cuisine)}</button>`;
+        }).join('');
 
-        cuisineInput.addEventListener('keydown', function(e) {
-            const suggestions = document.querySelectorAll('.cuisine-suggestion');
-            
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
-                updateSuggestionSelection(suggestions);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
-                updateSuggestionSelection(suggestions);
-            } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
-                e.preventDefault();
-                addCuisine(suggestions[selectedSuggestionIndex].dataset.cuisine);
-            } else if (e.key === 'Escape') {
-                cuisineSuggestions.style.display = 'none';
-            }
-        });
-
-        function updateSuggestionSelection(suggestions) {
-            suggestions.forEach((s, i) => {
-                s.classList.toggle('selected', i === selectedSuggestionIndex);
+        cuisineOptions.querySelectorAll('.pill').forEach(pill => {
+            pill.addEventListener('click', function() {
+                const cuisine = this.dataset.cuisine;
+                const selected = this.classList.toggle('selected');
+                selectedCuisines = selected
+                    ? [...selectedCuisines, cuisine]
+                    : selectedCuisines.filter(c => c !== cuisine);
             });
-        }
-
-        function addCuisine(cuisine) {
-            if (!selectedCuisines.includes(cuisine)) {
-                selectedCuisines.push(cuisine);
-                renderCuisineChips();
-                cuisineInput.value = '';
-                cuisineSuggestions.style.display = 'none';
-                cuisineInput.blur(); // Remove focus so suggestions don't reappear
-            }
-        }
-
-        function removeCuisine(cuisine) {
-            selectedCuisines = selectedCuisines.filter(c => c !== cuisine);
-            renderCuisineChips();
-        }
-
-        // Make removeCuisine globally accessible
-        window.removeCuisine = removeCuisine;
-
-        function renderCuisineChips() {
-            if (selectedCuisines.length === 0) {
-                cuisineChips.innerHTML = '';
-                cuisineLegend.innerHTML = '';
-                return;
-            }
-
-            // Render chips with cuisine colors
-            cuisineChips.innerHTML = selectedCuisines.map(cuisine => {
-                const key = cuisine.toLowerCase();
-                const color = CUISINE_COLOR_MAP[key] || '#1e293b';
-                return `<div class="cuisine-chip" style="background:${color};">
-                    ${cuisine}
-                    <span class="cuisine-chip-remove" onclick="removeCuisine('${cuisine}')">×</span>
-                </div>`;
-            }).join('');
-
-            // Render legend only for selected cuisines
-            const legendItems = selectedCuisines.map(cuisine => {
-                const key = cuisine.toLowerCase();
-                const color = CUISINE_COLOR_MAP[key] || '#1e293b';
-                return `<span class="cuisine-legend-item">
-                    <span class="cuisine-dot-legend" style="background:${color}"></span>
-                    <span>${cuisine}</span>
-                </span>`;
-            }).join('');
-
-            cuisineLegend.innerHTML = legendItems
-                ? `<span class="cuisine-legend-label">Cuisine colors:</span>${legendItems}`
-                : '';
-        }
-
-        // Close suggestions when clicking outside (but keep open if input is focused and empty)
-        document.addEventListener('click', function(e) {
-            if (!cuisineInput.contains(e.target) && !cuisineSuggestions.contains(e.target) && !cuisineDropdown.contains(e.target)) {
-                // Only hide if input doesn't have focus or has text
-                if (document.activeElement !== cuisineInput || cuisineInput.value.trim().length > 0) {
-                    cuisineSuggestions.style.display = 'none';
-                }
-            }
-        });
-
-        // Allow Enter key to search
-        cuisineInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && selectedSuggestionIndex < 0) {
-                e.preventDefault();
-                search();
-            }
         });
 
         // Allow Enter key to search from item input
         document.getElementById('item').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
+                this.blur();
                 search();
             }
         });
 
-        // Servery selection functionality
-        const serveryChips = document.getElementById('servery-chips');
+        // Servery selection
         const SERVERY_NAMES = {
-            'north': 'North Servery',
-            'south': 'South Servery',
-            'west': 'West Servery',
-            'seibel': 'Seibel Servery',
-            'baker': 'Baker College Kitchen',
-            'south main': 'South Main Servery'
+            'north': 'North',
+            'south': 'South',
+            'west': 'West',
+            'seibel': 'Seibel',
+            'baker': 'Baker',
+            'south main': 'South Main'
         };
-        const SERVERY_COLOR_MAP = {
-            'all': '#6b7280',      // Gray for "All Serveries"
-            'north': '#3b82f6',    // Blue
-            'south': '#10b981',    // Green
-            'west': '#8b5cf6',     // Purple
-            'seibel': '#f59e0b',   // Amber
-            'baker': '#ef4444',    // Red
-            'south main': '#ec4899' // Pink
-        };
-        const TOTAL_SERVERIES = Object.keys(SERVERY_NAMES).length; // north, south, west, seibel, baker, south main
+        const TOTAL_SERVERIES = Object.keys(SERVERY_NAMES).length;
 
-        // Handle servery option clicks
+        function selectAllServeries() {
+            allServeriesSelected = true;
+            selectedServeries = [];
+            document.querySelectorAll('.servery-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.servery === 'all');
+            });
+        }
+
         document.querySelectorAll('.servery-option').forEach(option => {
             option.addEventListener('click', function() {
-                if (this.classList.contains('disabled')) {
+                const serveryValue = this.dataset.servery;
+
+                if (serveryValue === 'all') {
+                    selectAllServeries();
                     return;
                 }
-                
-                const serveryValue = this.dataset.servery;
-                
-                if (serveryValue === 'all') {
-                    // Handle "All Serveries" click
-                    if (allServeriesSelected) {
-                        // Already selected, do nothing
-                        return;
-                    } else {
-                        // Select "All Serveries" and deselect all individual serveries
-                        allServeriesSelected = true;
-                        selectedServeries = [];
-                        this.classList.add('selected');
-                        // Deselect all individual serveries
-                        document.querySelectorAll('.servery-option:not(.servery-option-all)').forEach(opt => {
-                            opt.classList.remove('selected');
-                        });
+
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    selectedServeries = selectedServeries.filter(s => s !== serveryValue);
+                    if (selectedServeries.length === 0) {
+                        selectAllServeries();
                     }
-                } else {
-                    // Handle individual servery click
-                    if (this.classList.contains('selected')) {
-                        // Deselect individual servery
-                        this.classList.remove('selected');
-                        selectedServeries = selectedServeries.filter(s => s !== serveryValue);
-                        
-                        // If no serveries selected, go back to "All Serveries"
-                        if (selectedServeries.length === 0) {
-                            allServeriesSelected = true;
-                            document.querySelector('.servery-option-all').classList.add('selected');
-                        }
-                    } else {
-                        // Select individual servery
-                        // First, deselect "All Serveries" if it's selected
-                        if (allServeriesSelected) {
-                            allServeriesSelected = false;
-                            document.querySelector('.servery-option-all').classList.remove('selected');
-                        }
-                        
-                        // Select this servery
-                        this.classList.add('selected');
-                        if (!selectedServeries.includes(serveryValue)) {
-                            selectedServeries.push(serveryValue);
-                        }
-                        
-                        // If all 5 serveries are selected, automatically switch to "All Serveries"
-                        if (selectedServeries.length === TOTAL_SERVERIES) {
-                            allServeriesSelected = true;
-                            selectedServeries = [];
-                            document.querySelector('.servery-option-all').classList.add('selected');
-                            document.querySelectorAll('.servery-option:not(.servery-option-all)').forEach(opt => {
-                                opt.classList.remove('selected');
-                            });
-                        }
-                    }
+                    return;
                 }
-                
-                updateServeryOptions();
-                renderServeryChips();
+
+                allServeriesSelected = false;
+                document.querySelector('.servery-option-all').classList.remove('selected');
+                this.classList.add('selected');
+                selectedServeries.push(serveryValue);
+
+                // Picking every servery is the same as "All"
+                if (selectedServeries.length === TOTAL_SERVERIES) {
+                    selectAllServeries();
+                }
             });
         });
 
-        function updateServeryOptions() {
-            const allOption = document.querySelector('.servery-option-all');
-            
-            // Disable "All Serveries" if any individual servery is selected
-            if (allServeriesSelected) {
-                allOption.classList.remove('disabled');
-            } else {
-                allOption.classList.add('disabled');
-            }
-            
-            // Enable/disable individual options
-            // No need to disable since users can select all 5 (which will auto-switch to "All Serveries")
-            document.querySelectorAll('.servery-option:not(.servery-option-all)').forEach(option => {
-                option.classList.remove('disabled');
-            });
-        }
-
-        function renderServeryChips() {
-            if (allServeriesSelected) {
-                // Show "All Serveries" chip
-                const color = SERVERY_COLOR_MAP['all'] || '#6b7280';
-                serveryChips.innerHTML = `<div class="cuisine-chip" style="background:${color};">
-                    All Serveries
-                    <span class="cuisine-chip-remove" onclick="selectAllServeries()">×</span>
-                </div>`;
-            } else if (selectedServeries.length === 0) {
-                serveryChips.innerHTML = '';
-            } else {
-                // Render chips with unique colors for each servery
-                serveryChips.innerHTML = selectedServeries.map(servery => {
-                    const serveryName = SERVERY_NAMES[servery] || servery;
-                    const color = SERVERY_COLOR_MAP[servery] || '#6b7280';
-                    return `<div class="cuisine-chip" style="background:${color};">
-                        ${serveryName}
-                        <span class="cuisine-chip-remove" onclick="removeServery('${servery}')">×</span>
-                    </div>`;
-                }).join('');
-            }
-        }
-
-        function removeServery(servery) {
-            selectedServeries = selectedServeries.filter(s => s !== servery);
-            // Update the visual state of the option
-            document.querySelector(`.servery-option[data-servery="${servery}"]`).classList.remove('selected');
-            
-            // If no serveries selected, go back to "All Serveries"
-            if (selectedServeries.length === 0) {
-                allServeriesSelected = true;
-                document.querySelector('.servery-option-all').classList.add('selected');
-            }
-            
-            updateServeryOptions();
-            renderServeryChips();
-        }
-
-        function selectAllServeries() {
-            // Click the "All Serveries" option programmatically
-            const allOption = document.querySelector('.servery-option-all');
-            if (!allOption.classList.contains('disabled')) {
-                allOption.click();
-            }
-        }
-
-        // Make functions globally accessible
-        window.removeServery = removeServery;
-        window.selectAllServeries = selectAllServeries;
-        
-        // Initialize: render chips on page load
-        updateServeryOptions();
-        renderServeryChips();
-
-
-        // Force the backend to throw away its weekly cache and re-download every
-        // servery's menu from dining.rice.edu. Useful when a menu changed mid-week.
+        // Force the backend to re-download every servery's menu from dining.rice.edu.
+        // Useful when a menu changed mid-week.
         async function refreshMenus() {
             const btn = document.getElementById('refresh-btn');
             const status = document.getElementById('refresh-status');
             btn.disabled = true;
             btn.classList.add('refreshing');
             status.classList.remove('error');
-            status.textContent = 'Re-downloading this week\'s menus from dining.rice.edu…';
+            status.textContent = 'Updating menus…';
 
             try {
                 const response = await fetch('/api/refresh', { method: 'POST' });
@@ -2443,11 +667,7 @@
                     throw new Error(`HTTP ${response.status}`);
                 }
                 const data = await response.json();
-                const parts = Object.entries(data.serveries || {}).map(([key, info]) => {
-                    const name = SERVERY_NAMES[key] || key;
-                    return `${name}: ${info.items}`;
-                });
-                status.textContent = `Menus refreshed at ${data.refreshed_at} — ${data.total_items} items (${parts.join(', ')})`;
+                status.textContent = `Menus updated: ${data.total_items} dishes this week`;
 
                 // If results are showing, re-run the search so the page reflects the new data
                 const resultsDiv = document.getElementById('results');
@@ -2465,7 +685,7 @@
 
         // Current filter selections in the shape /api/search and /api/export expect
         function currentFilterPayload() {
-            const servery = allServeriesSelected ? '' : (selectedServeries.length > 0 ? selectedServeries.join(',') : '');
+            const servery = allServeriesSelected ? '' : selectedServeries.join(',');
             return {
                 cuisine: selectedCuisines.join(','),
                 dietary: selectedDietariesInclude.join(','),
@@ -2483,9 +703,8 @@
             const btn = document.getElementById('export-btn');
             const status = document.getElementById('refresh-status');
             btn.disabled = true;
-            btn.classList.add('refreshing');
             status.classList.remove('error');
-            status.textContent = 'Building your PDF…';
+            status.textContent = 'Making PDF…';
             try {
                 const response = await fetch('/api/export', {
                     method: 'POST',
@@ -2507,39 +726,27 @@
                 a.click();
                 a.remove();
                 setTimeout(() => URL.revokeObjectURL(url), 60000);
-                status.textContent = `PDF ready: ${filename}`;
+                status.textContent = `Saved ${filename}`;
             } catch (error) {
                 status.classList.add('error');
                 status.textContent = `Export failed: ${error.message}`;
             } finally {
                 btn.disabled = false;
-                btn.classList.remove('refreshing');
             }
         }
 
         async function search() {
-            const cuisine = selectedCuisines.length > 0 ? selectedCuisines.join(',') : '';
-            const dietary = selectedDietariesInclude.length > 0 ? selectedDietariesInclude.join(',') : '';
-            const dietaryExclude = selectedDietariesExclude.length > 0 ? selectedDietariesExclude.join(',') : '';
-            const day = document.getElementById('day').value.trim();
-            const meal = document.getElementById('meal').value.trim();
-            const item = document.getElementById('item').value.trim();
-            // If "All Serveries" is selected, send empty string (which means all serveries)
-            const servery = allServeriesSelected ? '' : (selectedServeries.length > 0 ? selectedServeries.join(',') : '');
+            const payload = currentFilterPayload();
+            const resultsDiv = document.getElementById('results');
 
-            // Check for contradictory selections (same item in both include and exclude)
-            if (selectedDietariesInclude.length > 0 && selectedDietariesExclude.length > 0) {
-                const includeLower = selectedDietariesInclude.map(d => d.toLowerCase());
-                const excludeLower = selectedDietariesExclude.map(d => d.toLowerCase());
-                const contradictions = includeLower.filter(d => excludeLower.includes(d));
-                if (contradictions.length > 0) {
-                    const contradictionText = contradictions.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ');
-                    alert(`Contradictory selection: You selected "${contradictionText}" in both "Show items WITH these" and "Show items WITHOUT these". Please remove it from one section.`);
-                    return;
-                }
+            // Check for contradictory selections (same tag in both "Only show" and "Leave out")
+            const contradictions = selectedDietariesInclude.filter(d => selectedDietariesExclude.includes(d));
+            if (contradictions.length > 0) {
+                const names = contradictions.map(titleCase).join(', ');
+                resultsDiv.innerHTML = `<div class="no-results">You picked ${escapeHtml(names)} in both “Only show” and “Leave out”. Remove it from one.</div>`;
+                return;
             }
 
-            const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = `
                 <div class="loading-container">
                     <div class="loading-dots">
@@ -2547,9 +754,10 @@
                         <div class="loading-dot"></div>
                         <div class="loading-dot"></div>
                     </div>
-                    <div class="loading-text">Searching serveries...</div>
+                    <div class="loading-text">Searching…</div>
                 </div>
             `;
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             try {
                 const response = await fetch('/api/search', {
@@ -2557,21 +765,12 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        cuisine: cuisine || "",
-                        dietary: dietary || "",
-                        dietary_exclude: dietaryExclude || "",
-                        dietary_mode: dietaryMode || "or",
-                        day: day || "",
-                        meal: meal || "",
-                        item: item || "",
-                        servery: servery || ""
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-                    resultsDiv.innerHTML = `<div class="no-results">Error: ${errorData.error || 'Request failed'}</div>`;
+                    resultsDiv.innerHTML = `<div class="no-results">Error: ${escapeHtml(errorData.error || 'Request failed')}</div>`;
                     return;
                 }
 
@@ -2580,21 +779,17 @@
                 });
 
                 if (data.error) {
-                    resultsDiv.innerHTML = `<div class="no-results">${data.error}</div>`;
+                    resultsDiv.innerHTML = `<div class="no-results">${escapeHtml(data.error)}</div>`;
                     return;
                 }
 
-                // Update current time badge (optional, already loaded on page load)
                 if (data.current_time) {
-                    const timeBadge = document.getElementById('current-time-badge');
-                    if (timeBadge) {
-                        timeBadge.textContent = `${data.current_time.day.charAt(0).toUpperCase() + data.current_time.day.slice(1)} ${data.current_time.time} ${data.current_time.timezone}`;
-                    }
+                    document.getElementById('current-time-badge').textContent = formatClock(data.current_time.day, data.current_time.time);
                 }
 
                 displayResults(data);
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="no-results">Error: ${error.message}</div>`;
+                resultsDiv.innerHTML = `<div class="no-results">Error: ${escapeHtml(error.message)}</div>`;
             }
         }
 
@@ -2642,46 +837,61 @@
             const serveryLower = serveryName.toLowerCase();
             const serverySchedule = DINING_SCHEDULE_DATA[serveryLower];
             if (!serverySchedule || !serverySchedule[dayNum]) return null;
-            
+
             // Find the meal in the schedule
             const meal = serverySchedule[dayNum].find(m => {
                 // Normalize meal types (late_night -> dinner, extended_dinner -> dinner)
                 const normalizedMeal = m.meal_type === 'late_night' || m.meal_type === 'extended_dinner' ? 'dinner' : m.meal_type;
                 return normalizedMeal === mealType.toLowerCase();
             });
-            
+
             if (!meal) return null;
-            
+
             // Parse time string "HH:MM" to minutes since midnight
             const [startHour, startMin] = meal.start_time.split(':').map(Number);
             const [endHour, endMin] = meal.end_time.split(':').map(Number);
-            
+
             return {
                 start: startHour * 60 + startMin,
                 end: endHour * 60 + endMin
             };
         }
 
+        // Positive dietary tags get a badge on the dish; everything else is an allergen line
+        const DIET_BADGES = { Vegan: ['VG', 'tag-vegan'], Vegetarian: ['V', 'tag-vegetarian'], Halal: ['H', 'tag-halal'] };
+
+        function renderDish(item) {
+            const icons = item.icons || [];
+            const dots = (item.matchedCuisines || []).map(c => {
+                const color = CUISINE_COLOR_MAP[String(c).toLowerCase()] || '#6b7280';
+                return `<span class="cuisine-dot" style="background:${color}" title="${escapeHtml(c)}"></span>`;
+            }).join('');
+            // Vegan implies vegetarian, so show only the stronger badge
+            const badges = icons
+                .filter(icon => DIET_BADGES[icon] && !(icon === 'Vegetarian' && icons.includes('Vegan')))
+                .map(icon => `<span class="tag ${DIET_BADGES[icon][1]}" title="${icon}">${DIET_BADGES[icon][0]}</span>`)
+                .join('');
+            const allergens = icons.filter(icon => !DIET_BADGES[icon]).map(icon => icon.toLowerCase());
+
+            return `<li class="menu-items-list-item">
+                <div class="dish-line">${dots}<span class="dish-name">${escapeHtml(item.name)}</span>${badges ? `<span class="dish-tags">${badges}</span>` : ''}</div>
+                ${allergens.length ? `<div class="dish-allergens">Contains ${escapeHtml(allergens.join(', '))}</div>` : ''}
+            </li>`;
+        }
 
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
             const results = data.results || {};
 
             if (!results || Object.keys(results).length === 0) {
-                const filters = [];
-                if (data.filters && data.filters.cuisine) filters.push(data.filters.cuisine);
-                if (data.filters && data.filters.dietary) filters.push(data.filters.dietary);
-                if (data.filters && data.filters.item) filters.push(data.filters.item);
-                if (data.filters && data.filters.day) filters.push(data.filters.day);
-                if (data.filters && data.filters.meal) filters.push(data.filters.meal);
-                resultsDiv.innerHTML = `<div class="no-results">Sorry, we couldn't find any meals.</div>`;
+                resultsDiv.innerHTML = `<div class="no-results">No dishes match these filters.</div>`;
                 return;
             }
 
             // Day and meal order for chronological sorting
             const DAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
             const MEAL_ORDER = ['breakfast', 'lunch', 'munch', 'dinner'];
-            
+
             // Get selected day filter (if any)
             const selectedDay = data.filters && data.filters.day ? data.filters.day.toLowerCase() : null;
 
@@ -2694,7 +904,7 @@
                 serveryData.items.forEach(item => {
                     if (item && item.day && item.meal) {
                         const mealType = item.meal.toLowerCase();
-                        
+
                         // If this is a lunch item from a servery that has munch, also add it as a munch item
                         // (since munch uses the same menu as lunch, per user's note)
                         if (mealType === 'lunch' && serveryHasMunch(serveryName, item.day)) {
@@ -2709,7 +919,7 @@
                                 is_currently_available: item.is_currently_available || false
                             });
                         }
-                        
+
                         // Always add the original item (lunch items go to lunch slot, munch items go to munch slot)
                         allItems.push({
                             name: item.name,
@@ -2731,14 +941,14 @@
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
             const currentTime = currentHour * 60 + currentMinute; // minutes since midnight
-            
+
             // Helper to get meal start and end times in minutes
             function getMealTimeRange(mealType) {
                 const isWeekend = now.getDay() === 0 || now.getDay() === 6;
                 const mealRanges = {
                     'breakfast': { start: 7 * 60 + 30, end: 10 * 60 },  // 7:30 AM - 10:00 AM
                     'lunch': { start: 11 * 60 + 30, end: 14 * 60 },      // 11:30 AM - 2:00 PM
-                    'munch': { 
+                    'munch': {
                         start: isWeekend ? 15 * 60 : 14 * 60,            // 3:00 PM weekends, 2:00 PM weekdays
                         end: isWeekend ? 17 * 60 : 16 * 60               // 5:00 PM weekends, 4:00 PM weekdays
                     },
@@ -2746,7 +956,7 @@
                 };
                 return mealRanges[mealType.toLowerCase()] || { start: 0, end: 0 };
             }
-            
+
             // Helper to check if a meal time slot has passed
             function hasMealPassed(dayName, mealType) {
                 if (dayName.toLowerCase() !== todayName) {
@@ -2758,23 +968,23 @@
                 // Same day - check if meal time has passed
                 const mealTypeLower = mealType.toLowerCase();
                 const mealRange = getMealTimeRange(mealType);
-                
+
                 // Special case: lunch ends at 2pm, but if we're in munch time, lunch has passed
                 // (even though lunch items might show during munch, the lunch meal period itself has passed)
                 if (mealTypeLower === 'lunch') {
                     // Lunch ends at 2pm (14:00), so if it's past 2pm, lunch has passed
                     return currentTime > mealRange.end;
                 }
-                
+
                 return currentTime > mealRange.end;
             }
-            
+
             // Helper to check if a meal is currently happening (generic check, not servery-specific)
             function isMealCurrent(dayName, mealType) {
                 if (dayName.toLowerCase() !== todayName) return false;
-                
+
                 const mealTypeLower = mealType.toLowerCase();
-                
+
                 // Special handling for lunch - check if we're in lunch OR munch time
                 // (since lunch items can be shown during munch)
                 if (mealTypeLower === 'lunch') {
@@ -2783,37 +993,37 @@
                     return (currentTime >= lunchRange.start && currentTime <= lunchRange.end) ||
                            (currentTime >= munchRange.start && currentTime <= munchRange.end);
                 }
-                
+
                 // For munch, check munch time range
                 if (mealTypeLower === 'munch') {
                     const munchRange = getMealTimeRange('munch');
                     return currentTime >= munchRange.start && currentTime <= munchRange.end;
                 }
-                
+
                 // For other meals, check their specific time range
                 const mealRange = getMealTimeRange(mealType);
                 return currentTime >= mealRange.start && currentTime <= mealRange.end;
             }
-            
+
             // Helper to check if a servery is currently open for a specific meal
             // Uses actual servery-specific schedule data
             function isServeryOpen(serveryName, dayName, mealType) {
                 if (dayName.toLowerCase() !== todayName) return false;
-                
+
                 // Get servery-specific meal time range
                 const mealRange = getServeryMealTimeRange(serveryName, dayName, mealType);
                 if (!mealRange) return false;
-                
+
                 // Check if current time is within this servery's specific meal time
                 return currentTime >= mealRange.start && currentTime <= mealRange.end;
             }
-            
+
             allItems.sort((a, b) => {
                 const dayA = a.day.toLowerCase();
                 const dayB = b.day.toLowerCase();
                 const mealA = a.meal.toLowerCase();
                 const mealB = b.meal.toLowerCase();
-                
+
                 // If specific day is selected, just sort by meal order for that day
                 if (selectedDay) {
                     if (dayA !== selectedDay && dayB !== selectedDay) {
@@ -2832,21 +1042,21 @@
                         return mealIdxA - mealIdxB;
                     }
                 }
-                
+
                 // No day filter - smart sorting: current/upcoming first
                 const currentA = isMealCurrent(dayA, mealA);
                 const currentB = isMealCurrent(dayB, mealB);
                 const passedA = hasMealPassed(dayA, mealA);
                 const passedB = hasMealPassed(dayB, mealB);
-                
+
                 // Past meals ALWAYS go to the end (lowest priority)
                 if (passedA && !passedB) return 1;  // A is past, B is not - A goes after B
                 if (!passedA && passedB) return -1; // B is past, A is not - B goes after A (A comes first)
-                
+
                 // Currently happening meals come first (after we've filtered out past meals)
                 if (currentA && !currentB) return -1;
                 if (!currentA && currentB) return 1;
-                
+
                 // If both are current, prioritize munch over lunch (munch is more specific)
                 if (currentA && currentB) {
                     if (mealA === 'munch' && mealB === 'lunch') return -1;
@@ -2856,10 +1066,7 @@
                     const mealIdxB = MEAL_ORDER.indexOf(mealB);
                     return mealIdxA - mealIdxB;
                 }
-                
-                // Both are upcoming (not current, not passed) - they should come after current but before past
-                // This is already handled by the chronological sort below
-                
+
                 // If both are upcoming (not current, not passed), sort chronologically
                 // If both are past, sort chronologically
                 const dayIdxA = DAY_ORDER.indexOf(dayA);
@@ -2868,193 +1075,63 @@
                     // Different days - chronological order
                     return dayIdxA - dayIdxB;
                 }
-                
+
                 // Same day - sort by meal
                 const mealIdxA = MEAL_ORDER.indexOf(mealA);
                 const mealIdxB = MEAL_ORDER.indexOf(mealB);
                 return mealIdxA - mealIdxB;
             });
 
-            let html = '';
-            let currentLocation = '';
-            let itemsByServery = {};
-
-            // Display items in chronological order, grouping by time slot and servery
-            allItems.forEach((item, index) => {
-                // Show lunch and munch as separate time slots (no merging)
-                const mealDisplay = item.meal.toUpperCase();
-                const location = `${item.day.toUpperCase()} ${mealDisplay}`;
-                
-                // Start new time slot group if needed
-                if (location !== currentLocation) {
-                    // Close previous group if exists
-                    if (currentLocation !== '') {
-                        // Display all items from previous time slot, grouped by servery
-                        for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
-                            const allIcons = new Set();
-                            serveryItems.forEach(i => {
-                                i.icons.forEach(icon => allIcons.add(icon));
-                            });
-                            
-                            // Check if this servery is currently open for this meal
-                            const firstItem = serveryItems[0];
-                            const isOpen = isServeryOpen(serveryName, firstItem.day, firstItem.meal);
-                            const serveryNameClass = isOpen ? 'servery-name-open' : '';
-                            
-                            html += `<div class="menu-item">
-                                <span class="menu-item-name">
-                                    <strong class="servery-name ${serveryNameClass}">${serveryName.toUpperCase()}:</strong>
-                                    <ul class="menu-items-list">`;
-
-                            // Render each item as its own line to avoid awkward comma wrapping on mobile
-                            serveryItems.forEach((i) => {
-                                html += `<li class="menu-items-list-item item-with-cuisines">`;
-                                // Cuisine dots
-                                if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
-                                    i.matchedCuisines.forEach(c => {
-                                        const key = (c || '').toString().toLowerCase();
-                                        const color = CUISINE_COLOR_MAP[key] || '#4b5563';
-                                        const title = c;
-                                        html += `<span class="cuisine-dot" style="background:${color}" title="${title}"></span>`;
-                                    });
-                                }
-                                html += `<span>${i.name}</span>`;
-                                html += `</li>`;
-                            });
-
-                            html += `</ul>
-                                </span>
-                                <div class="menu-item-icons">`;
-                            
-                            Array.from(allIcons).forEach(icon => {
-                                const iconClass = icon.toLowerCase().replace(' ', '-');
-                                html += `<div class="item-icon icon-${iconClass}" title="${icon}">`;
-                                if (icon === 'Vegan' || icon === 'Vegetarian') {
-                                    html += 'V';
-                                } else if (icon === 'Halal') {
-                                    html += 'H';
-                                } else if (icon === 'Gluten') {
-                                    html += '🌾';
-                                } else if (icon === 'Soy') {
-                                    html += '🫘';
-                                } else if (icon === 'Dairy') {
-                                    html += '🥛';
-                                } else if (icon === 'Eggs') {
-                                    html += '🥚';
-                                } else if (icon === 'Fish') {
-                                    html += '🐟';
-                                } else if (icon === 'Shellfish') {
-                                    html += '🦞';
-                                } else if (icon === 'Peanuts') {
-                                    html += '🥜';
-                                } else if (icon === 'Tree Nuts') {
-                                    html += '🌰';
-                                } else if (icon === 'Sesame') {
-                                    html += '🌾';
-                                }
-                                html += `</div>`;
-                            });
-                            
-                            html += `</div></div>`;
-                        }
-                        html += `</div></div></div>`;
-                        itemsByServery = {};
-                    }
-                    
-                    // Check if this meal has passed
-                    const mealHasPassed = hasMealPassed(item.day.toLowerCase(), item.meal.toLowerCase());
-                    const pastIndicator = mealHasPassed ? '<span class="past-meal-badge">PAST</span>' : '';
-                    const titleClass = mealHasPassed ? 'item-group-title past-meal' : 'item-group-title';
-                    
-                    // Start new group
-                    html += `<div class="item-group ${mealHasPassed ? 'past-meal-group' : ''}">
-                        <div class="${titleClass}">${location} ${pastIndicator}</div>
-                        <div class="item-group-content">`;
-                    currentLocation = location;
+            // Group the sorted items into time slots (day + meal), then by servery
+            const slots = [];
+            allItems.forEach(item => {
+                const key = `${item.day}|${item.meal}`;
+                let slot = slots[slots.length - 1];
+                if (!slot || slot.key !== key) {
+                    slot = { key, day: item.day, meal: item.meal, serveries: {} };
+                    slots.push(slot);
                 }
-
-                // Group items by servery for this time slot
-                if (!itemsByServery[item.servery]) {
-                    itemsByServery[item.servery] = [];
-                }
-                itemsByServery[item.servery].push(item);
+                (slot.serveries[item.servery] = slot.serveries[item.servery] || []).push(item);
             });
 
-            // Display last time slot's items
-            if (currentLocation !== '') {
-                for (const [serveryName, serveryItems] of Object.entries(itemsByServery)) {
-                    const allIcons = new Set();
-                    serveryItems.forEach(i => {
-                        i.icons.forEach(icon => allIcons.add(icon));
-                    });
-                    
-                    // Check if this servery is currently open for this meal
-                    const firstItem = serveryItems[0];
-                    const isOpen = isServeryOpen(serveryName, firstItem.day, firstItem.meal);
-                    const serveryNameClass = isOpen ? 'servery-name-open' : '';
-                    
+            // Name the active filters next to the count, so a leftover filter is never a surprise
+            const f = currentFilterPayload();
+            const split = value => value ? value.split(',') : [];
+            const activeFilters = [
+                ...split(f.cuisine),
+                ...split(f.servery).map(s => SERVERY_NAMES[s] || titleCase(s)),
+                f.day && titleCase(f.day),
+                f.meal && titleCase(f.meal),
+                f.item && `“${f.item}”`,
+                ...split(f.dietary).map(titleCase),
+                ...split(f.dietary_exclude).map(d => `No ${d}`),
+            ].filter(Boolean);
+
+            const dishCount = allItems.length;
+            let html = `<div class="results-summary">${dishCount} ${dishCount === 1 ? 'dish' : 'dishes'} across ${slots.length} ${slots.length === 1 ? 'meal' : 'meals'}${activeFilters.map(name => ` · ${escapeHtml(name)}`).join('')}</div>`;
+
+            slots.forEach(slot => {
+                const mealHasPassed = hasMealPassed(slot.day.toLowerCase(), slot.meal.toLowerCase());
+                html += `<section class="item-group ${mealHasPassed ? 'past-meal-group' : ''}">
+                    <h2 class="item-group-title ${mealHasPassed ? 'past-meal' : ''}">
+                        <span>${titleCase(slot.day)} · ${titleCase(slot.meal)}</span>
+                        ${mealHasPassed ? '<span class="past-meal-badge">Past</span>' : ''}
+                    </h2>`;
+
+                for (const [serveryName, serveryItems] of Object.entries(slot.serveries)) {
+                    const isOpen = isServeryOpen(serveryName, slot.day, slot.meal);
+                    const name = SERVERY_NAMES[serveryName.toLowerCase()] || titleCase(serveryName);
                     html += `<div class="menu-item">
-                               <span class="menu-item-name">
-                                   <strong class="servery-name ${serveryNameClass}">${serveryName.toUpperCase()}:</strong>
-                                   <ul class="menu-items-list">`;
-
-                           // Render each item as its own line to avoid awkward comma wrapping on mobile
-                           serveryItems.forEach((i) => {
-                               html += `<li class="menu-items-list-item item-with-cuisines">`;
-                               // Cuisine dots
-                               if (Array.isArray(i.matchedCuisines) && i.matchedCuisines.length > 0) {
-                                   i.matchedCuisines.forEach(c => {
-                                       const key = (c || '').toString().toLowerCase();
-                                       const color = CUISINE_COLOR_MAP[key] || '#4b5563';
-                                       const title = c;
-                                       html += `<span class="cuisine-dot" style="background:${color}" title="${title}"></span>`;
-                                   });
-                               }
-                               html += `<span>${i.name}</span>`;
-                               html += `</li>`;
-                           });
-
-                           html += `</ul>
-                               </span>
-                               <div class="menu-item-icons">`;
-                    
-                    Array.from(allIcons).forEach(icon => {
-                        const iconClass = icon.toLowerCase().replace(' ', '-');
-                        html += `<div class="item-icon icon-${iconClass}" title="${icon}">`;
-                        if (icon === 'Vegan' || icon === 'Vegetarian') {
-                            html += 'V';
-                        } else if (icon === 'Halal') {
-                            html += 'H';
-                        } else if (icon === 'Gluten') {
-                            html += '🌾';
-                        } else if (icon === 'Soy') {
-                            html += '🫘';
-                        } else if (icon === 'Dairy') {
-                            html += '🥛';
-                        } else if (icon === 'Eggs') {
-                            html += '🥚';
-                        } else if (icon === 'Fish') {
-                            html += '🐟';
-                        } else if (icon === 'Shellfish') {
-                            html += '🦞';
-                        } else if (icon === 'Peanuts') {
-                            html += '🥜';
-                        } else if (icon === 'Tree Nuts') {
-                            html += '🌰';
-                        } else if (icon === 'Sesame') {
-                            html += '🌾';
-                        }
-                        html += `</div>`;
-                    });
-                    
-                    html += `</div></div>`;
+                        <div class="servery-name">${escapeHtml(name)}${isOpen ? '<span class="open-pill">Open now</span>' : ''}</div>
+                        <ul class="menu-items-list">${serveryItems.map(renderDish).join('')}</ul>
+                    </div>`;
                 }
-                html += `</div></div></div>`;
-            }
+
+                html += `</section>`;
+            });
 
             resultsDiv.innerHTML = html;
         }
     </script>
 </body>
 </html>
-

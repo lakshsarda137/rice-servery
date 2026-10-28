@@ -2,15 +2,17 @@
 Enhanced Servery Finder with Icon Extraction and Web Interface
 """
 
+import urllib.parse
 import urllib.request
 import urllib.error
+import json
 import re
 import secrets
-from collections import defaultdict
+from collections import Counter, defaultdict
 from difflib import SequenceMatcher
-from datetime import datetime, timezone, time as dt_time
+from datetime import date, datetime, timedelta, timezone, time as dt_time
 from typing import Optional, Dict, Any, Tuple
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -29,6 +31,22 @@ import os
 
 # Resolve relative to this file: on Vercel the process cwd is not the project dir.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _load_env_file(path: str) -> None:
+    """Read KEY=value lines from a local .env (Vercel injects env vars itself). Real env vars win."""
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env_file(os.path.join(BASE_DIR, '.env'))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # Central Time Zone (Rice University is in Houston, TX)
@@ -57,11 +75,16 @@ DIETARY_ICONS = {
 
 # Cuisine keywords
 CUISINE_KEYWORDS = {
-    'indian': ['curry', 'masala', 'tikka', 'biryani', 'naan', 'dal', 'chana', 'samosas', 
-               'tandoori', 'roti', 'ghee', 'cumin', 'turmeric', 'garam masala', 'basmati rice',
-               'biryani', 'palak', 'paneer', 'tandoor', 'korma', 'vindaloo'],
+    # Includes the misspellings Rice actually posts (e.g. "Butter Panner", "Chicken Briyani").
+    'indian': ['curry', 'masala', 'tikka', 'biryani', 'briyani', 'biriyani', 'naan', 'dal', 'daal',
+               'dhal', 'chana', 'chole', 'samosa', 'tandoori', 'tandoor', 'roti', 'paratha', 'ghee',
+               'cumin', 'turmeric', 'basmati rice', 'palak', 'saag', 'paneer', 'panner', 'korma',
+               'vindaloo', 'makhani', 'raita', 'papadum', 'pappadum', 'papad', 'poppadom', 'aloo',
+               'matar', 'gobi', 'bhindi', 'rajma', 'jeera', 'pulao', 'pakora', 'bhaji', 'kofta',
+               'keema', 'jalfrezi', 'rogan josh', 'chutney', 'dosa', 'idli', 'sambar', 'chaat',
+               'kheer', 'gulab jamun', 'lassi', 'tadka', 'dhaba'],
     'chinese': ['kung pao', 'szechuan', 'szechwan', 'general tso', 'orange chicken', 'lo mein',
-                'chow mein', 'fried rice', 'dumpling', 'wonton', 'peking', 'canton', 'hunan',
+                'chow mein', 'fried rice', 'dumpling', 'wonton', 'peking', 'canton', 'cantonese', 'hunan',
                 'sweet and sour', 'mapo', 'char siu', 'bao', 'dim sum', 'hot pot', 'shrimp'],
     'asian': ['wok', 'stir fry', 'bulgogi', 'pad thai', 'sushi', 'ramen', 'kimchi', 
               'gochujang', 'hoisin', 'miso', 'teriyaki', 'jasmine rice', 'short grain rice',
@@ -87,9 +110,24 @@ CUISINE_KEYWORDS = {
               'dolmades', 'baklava', 'greek salad', 'hummus', 'pita'],
     'mediterranean': ['mezze', 'hummus', 'pita', 'garbanzo', 'tzatziki', 'olive', 'feta',
                       'tabbouleh', 'falafel', 'tahini', 'moussaka', 'spanakorizo', 'shrimp'],
-    'american': ['burger', 'fries', 'mac and cheese', 'meatloaf', 'shepherd\'s pie', 
+    'american': ['burger', 'hamburger', 'fries', 'mac and cheese', 'meatloaf', 'shepherd\'s pie',
                  'mashed potatoes', 'gravy', 'biscuit', 'cornbread']
 }
+
+# Items naming another cuisine are not counted for this one even if a keyword hits
+# (e.g. "Japanese Carrot & Potato Curry" or a "Thai Curry" bowl is not Indian).
+CUISINE_EXCLUDE_KEYWORDS = {
+    'indian': ['thai', 'japanese', 'chinese', 'korean', 'jamaican', 'caribbean', 'katsu'],
+}
+
+
+def _keyword_regex(words):
+    # Whole-word match with optional plural, so "roti" doesn't hit "Rotini" or "dal" hit "Medallions".
+    return re.compile(r'\b(?:' + '|'.join(re.escape(w) for w in words) + r')(?:e?s)?\b', re.IGNORECASE)
+
+
+CUISINE_PATTERNS = {key: _keyword_regex(words + [key]) for key, words in CUISINE_KEYWORDS.items()}
+CUISINE_EXCLUDE_PATTERNS = {key: _keyword_regex(words) for key, words in CUISINE_EXCLUDE_KEYWORDS.items()}
 
 # Servery key -> path on https://dining.rice.edu/. Each page holds both the
 # "View Day" and "View Week" tabs; we parse the "View Week" block (#block-weeklylunch).
@@ -218,11 +256,130 @@ def get_current_meal_and_status(servery_name: str, day_name: str) -> Tuple[Optio
 #       ...
 #   }
 # }
+MENU_TTL_SECONDS = 2 * 60 * 60  # re-download a servery after this long
+
 MENU_CACHE: Dict[str, Any] = {
     "week_key": None,
     "fetched_at": {},   # servery -> ISO timestamp (CST) of the last successful fetch
     "menus": {}
 }
+
+
+# Persistent menu log: one record {"fetched_at", "menu"} per (ISO week, servery).
+# It backs the Statistics page and survives serverless cold starts, which matters
+# because Rice blanks out past days - once a day is gone from their page, the log
+# is the only copy. Stored in Supabase (table menu_log, see supabase/schema.sql)
+# when SUPABASE_URL and SUPABASE_SECRET_KEY are set, otherwise as JSON files
+# (MENU_LOG_DIR; /tmp on Vercel, which is wiped between instances).
+MENU_LOG_DIR = os.environ.get("MENU_LOG_DIR") or (
+    "/tmp/menu_log" if os.environ.get("VERCEL") else os.path.join(BASE_DIR, "menu_log"))
+WEEK_KEY_RE = re.compile(r'^\d{4}-W\d{2}$')
+
+
+def _supabase_settings() -> Optional[Tuple[str, str]]:
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SECRET_KEY")
+    if not (url and key):
+        return None
+    # Accept the dashboard's "RESTful endpoint" form (…supabase.co/rest/v1/) as well as the plain project URL
+    return re.sub(r'/rest/v1/?$', '', url.rstrip('/')), key
+
+
+def _supabase(method: str, params: Dict[str, str], body=None, prefer: Optional[str] = None):
+    """Call Supabase's REST API (PostgREST) on the menu_log table. Raises on HTTP errors."""
+    url, key = _supabase_settings()
+    headers = {'apikey': key, 'Content-Type': 'application/json'}
+    # Legacy service_role keys are JWTs and also go in Authorization; new sb_secret_ keys only use apikey
+    if key.startswith('eyJ'):
+        headers['Authorization'] = f'Bearer {key}'
+    if prefer:
+        headers['Prefer'] = prefer
+    query = urllib.parse.urlencode(params, quote_via=urllib.parse.quote, safe=',.')
+    req = urllib.request.Request(
+        f"{url}/rest/v1/menu_log?{query}", method=method, headers=headers,
+        data=json.dumps(body).encode() if body is not None else None)
+    with urllib.request.urlopen(req, timeout=8) as response:
+        raw = response.read().decode()
+        return json.loads(raw) if raw else None
+
+
+def supabase_upsert_menu_log(week_key: str, servery_name: str, record: Dict[str, Any]) -> None:
+    _supabase('POST', {'on_conflict': 'week_key,servery'},
+              body={'week_key': week_key, 'servery': servery_name,
+                    'fetched_at': record['fetched_at'], 'menu': record['menu']},
+              prefer='resolution=merge-duplicates,return=minimal')
+
+
+def _log_file(week_key: str, servery_name: str) -> str:
+    return os.path.join(MENU_LOG_DIR, week_key, servery_name.replace(' ', '-') + '.json')
+
+
+def load_menu_log(week_key: str, servery_name: str) -> Optional[Dict[str, Any]]:
+    try:
+        if _supabase_settings():
+            rows = _supabase('GET', {'select': 'fetched_at,menu',
+                                     'week_key': f'eq.{week_key}', 'servery': f'eq.{servery_name}'})
+            return rows[0] if rows else None
+        with open(_log_file(week_key, servery_name)) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        print(f"Menu log read failed for {week_key}/{servery_name}: {e}")
+        return None
+
+
+def save_menu_log(week_key: str, servery_name: str, record: Dict[str, Any]) -> None:
+    try:
+        if _supabase_settings():
+            supabase_upsert_menu_log(week_key, servery_name, record)
+            return
+        path = _log_file(week_key, servery_name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            json.dump(record, f)
+    except Exception as e:
+        print(f"Menu log write failed for {week_key}/{servery_name}: {e}")
+
+
+def load_menu_logs(from_key: str, to_key: str) -> Dict[Tuple[str, str], Dict[str, Any]]:
+    """Every logged menu with from_key <= week <= to_key, as {(week_key, servery): menu}.
+
+    One Supabase query for the whole range (week keys sort as text), so long
+    ranges don't cost a request per servery per week.
+    """
+    menus = {}
+    try:
+        if _supabase_settings():
+            rows = _supabase('GET', {'select': 'week_key,servery,menu',
+                                     'and': f'(week_key.gte.{from_key},week_key.lte.{to_key})'}) or []
+            for row in rows:
+                menus[(row['week_key'], row['servery'])] = row['menu'] or {}
+            return menus
+        if not os.path.isdir(MENU_LOG_DIR):
+            return menus
+        for week_key in os.listdir(MENU_LOG_DIR):
+            if not (WEEK_KEY_RE.match(week_key) and from_key <= week_key <= to_key):
+                continue
+            for servery_name in SERVERIES:
+                logged = load_menu_log(week_key, servery_name)
+                if logged:
+                    menus[(week_key, servery_name)] = logged.get("menu") or {}
+    except Exception as e:
+        print(f"Menu log range read failed for {from_key}..{to_key}: {e}")
+    return menus
+
+
+def list_logged_weeks():
+    try:
+        if _supabase_settings():
+            weeks = {row['week_key'] for row in _supabase('GET', {'select': 'week_key'}) or []}
+        else:
+            weeks = os.listdir(MENU_LOG_DIR) if os.path.isdir(MENU_LOG_DIR) else []
+    except Exception as e:
+        print(f"Menu log listing failed: {e}")
+        weeks = []
+    return sorted(w for w in weeks if WEEK_KEY_RE.match(w))
 
 
 def extract_icons(icons_html):
@@ -392,9 +549,9 @@ def _download_servery_html(servery_path: str) -> str:
 def fetch_menu_with_icons(servery_path: str):
     """Fetch and extract the *weekly* ("View Week") menu with dietary icons for a single servery.
 
-    Always goes to Rice's origin (see _download_servery_html). The in-memory weekly
-    cache in get_weekly_menu() makes sure we only do this once per servery per ISO
-    week unless the user explicitly presses "Refresh".
+    Always goes to Rice's origin (see _download_servery_html). The in-memory cache
+    in get_weekly_menu() limits this to once per servery every MENU_TTL_SECONDS
+    unless the user explicitly presses "Refresh".
     """
     html = _download_servery_html(servery_path)
     if not html:
@@ -545,8 +702,13 @@ def get_weekly_menu(servery_name: str, servery_path: str, force: bool = False):
 
     - At the start of a new ISO week (Monday), the cache key changes and we
       automatically discard the old cached data.
-    - Within the same week, we fetch each servery from Rice once, then
-      reuse that data for all subsequent searches.
+    - Within the same week, cached data is reused for MENU_TTL_SECONDS, then
+      re-downloaded. Rice fills in later days mid-week and blanks out past
+      days, so a week-long cache misses new items.
+    - On re-download, days the new page has items for replace the cached ones;
+      days it has blanked keep their cached items.
+    - The merged menu is written to the persistent menu log, which also seeds
+      the cache on a cold start.
     - force=True bypasses the cache and re-downloads from Rice (the "Refresh" button).
     """
     global MENU_CACHE
@@ -561,15 +723,30 @@ def get_weekly_menu(servery_name: str, servery_path: str, force: bool = False):
             "menus": {}
         }
 
-    # If this servery is already cached for this week, return it
-    if not force and servery_name in MENU_CACHE["menus"]:
-        return MENU_CACHE["menus"][servery_name]
+    cached = MENU_CACHE["menus"].get(servery_name)
+    fetched_at = MENU_CACHE["fetched_at"].get(servery_name)
+    if cached is None:
+        # Fresh process (e.g. a serverless cold start): resume from this week's log
+        logged = load_menu_log(week_key, servery_name)
+        if logged:
+            cached, fetched_at = logged.get("menu") or {}, logged.get("fetched_at")
+            MENU_CACHE["menus"][servery_name] = cached
+            MENU_CACHE["fetched_at"][servery_name] = fetched_at
+    if not force and cached is not None and fetched_at:
+        age = (datetime.now(CST) - datetime.fromisoformat(fetched_at)).total_seconds()
+        if age < MENU_TTL_SECONDS:
+            return cached
 
-    # Otherwise, fetch fresh data and cache it
-    menu = fetch_menu_with_icons(servery_path)
+    # Otherwise, fetch fresh data and merge it over what we had this week
+    fresh = fetch_menu_with_icons(servery_path)
+    menu = dict(cached or {})
+    for day, meals in fresh.items():
+        if any(meals.values()):
+            menu[day] = meals
     MENU_CACHE["menus"][servery_name] = menu
     MENU_CACHE["fetched_at"][servery_name] = datetime.now(CST).isoformat()
-    if not menu:
+    save_menu_log(week_key, servery_name, {"fetched_at": MENU_CACHE["fetched_at"][servery_name], "menu": menu})
+    if not fresh:
         print(f"Warning: No menu items extracted for {servery_name} (path: {servery_path})")
     return menu
 
@@ -579,7 +756,7 @@ def _menu_item_count(menu) -> int:
 
 
 def refresh_all_menus():
-    """Discard the cache and re-download every servery's weekly menu from Rice."""
+    """Re-download every servery's weekly menu from Rice, ignoring the cache TTL."""
     summary = {}
     for servery_name, servery_path in SERVERIES.items():
         menu = get_weekly_menu(servery_name, servery_path, force=True)
@@ -594,26 +771,15 @@ def refresh_all_menus():
 def matches_cuisine(item_name, cuisine):
     """Check if item matches cuisine"""
     cuisine_lower = cuisine.lower()
-    item_lower = item_name.lower()
-    
-    # Get keywords for this cuisine
-    keywords = []
-    cuisine_found = False
-    for key, words in CUISINE_KEYWORDS.items():
-        if key in cuisine_lower:
-            keywords.extend(words)
-            cuisine_found = True
-    
-    if not cuisine_found:
-        # If cuisine not in keywords, don't match - prevents "french" matching "french fries"
-        return False
-    else:
-        keywords.append(cuisine_lower)
-    
-    # Only match if item contains actual cuisine keywords, not just the cuisine name
-    # This prevents "french" matching "french fries"
-    for keyword in keywords:
-        if keyword in item_lower:
+
+    # Unknown cuisines never match - prevents "french" matching "french fries"
+    for key, pattern in CUISINE_PATTERNS.items():
+        if key not in cuisine_lower:
+            continue
+        exclude = CUISINE_EXCLUDE_PATTERNS.get(key)
+        if exclude and exclude.search(item_name):
+            continue
+        if pattern.search(item_name):
             return True
     return False
 
@@ -1169,29 +1335,164 @@ async def get_schedule():
     })
 
 
+CUISINE_LABELS = {key: key.title() for key in CUISINE_KEYWORDS}
+
+
+STATS_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+STATS_DIETARY = ['Vegan', 'Vegetarian', 'Halal']
+
+
+def _week_monday(week_key: str) -> Optional[date]:
+    try:
+        return date.fromisocalendar(int(week_key[:4]), int(week_key[6:]), 1)
+    except ValueError:  # e.g. 2026-W60
+        return None
+
+
+def _shift_week(week_key: str, weeks: int) -> str:
+    year, week, _ = (_week_monday(week_key) + timedelta(weeks=weeks)).isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def _range_label(from_key: str, to_key: str) -> str:
+    """('2026-W44', '2026-W44') -> 'Oct 26 – Nov 1'; the year is added when the range crosses one."""
+    monday, sunday = _week_monday(from_key), _week_monday(to_key) + timedelta(days=6)
+    with_year = monday.year != sunday.year
+
+    def fmt(d):
+        return f"{d.strftime('%b')} {d.day}" + (f", {d.year}" if with_year else "")
+    return f"{fmt(monday)} – {fmt(sunday)}"
+
+
+def compute_stats(from_key: str, to_key: str) -> Dict[str, Any]:
+    """Count what each servery served between two ISO weeks (inclusive).
+
+    A "dish" is one menu line at one meal, so a dish served at lunch and dinner
+    counts twice. A "meal" is one (day, lunch/dinner) service at one servery;
+    cuisine meals count the services with at least one dish of that cuisine.
+    The current week comes from the live (cached) menus, earlier weeks from the log.
+    """
+    current = _current_week_key()
+    menus = load_menu_logs(from_key, to_key)
+    if from_key <= current <= to_key:
+        for name, path in SERVERIES.items():
+            menus[(current, name)] = get_weekly_menu(name, path)
+    week_count = (_week_monday(to_key) - _week_monday(from_key)).days // 7 + 1
+
+    by_servery = {}
+    per_day = Counter()
+    days_logged = set()
+    dish_counts = Counter()
+    dish_names = {}
+    dish_serveries = defaultdict(set)
+
+    for servery_name in SERVERIES:
+        stats = {'dishes': 0, 'meals': 0, 'cuisine_dishes': Counter(), 'cuisine_meals': Counter(),
+                 'dietary': Counter()}
+        for (week_key, logged_servery), menu in menus.items():
+            if logged_servery != servery_name:
+                continue
+            for day in STATS_DAYS:
+                for items in (menu.get(day) or {}).values():
+                    if not items:
+                        continue
+                    stats['meals'] += 1
+                    days_logged.add((week_key, day))
+                    cuisines_this_meal = set()
+                    for item in items:
+                        name = item['name']
+                        stats['dishes'] += 1
+                        per_day[day] += 1
+                        for cuisine in CUISINE_KEYWORDS:
+                            if matches_cuisine(name, cuisine):
+                                stats['cuisine_dishes'][cuisine] += 1
+                                cuisines_this_meal.add(cuisine)
+                        for tag in STATS_DIETARY:
+                            if tag in item.get('icons', []):
+                                stats['dietary'][tag] += 1
+                        key = name.lower()
+                        dish_counts[key] += 1
+                        dish_names.setdefault(key, name)
+                        dish_serveries[key].add(servery_name)
+                    for cuisine in cuisines_this_meal:
+                        stats['cuisine_meals'][cuisine] += 1
+        by_servery[servery_name] = {
+            'name': servery_name.title(),
+            'dishes': stats['dishes'],
+            'meals': stats['meals'],
+            'cuisine_dishes': dict(stats['cuisine_dishes']),
+            'cuisine_meals': dict(stats['cuisine_meals']),
+            'dietary': {tag: stats['dietary'][tag] for tag in STATS_DIETARY},
+        }
+
+    weeks = sorted(set(list_logged_weeks()) | {current}, reverse=True)
+    presets = [{'label': 'This week', 'from': current, 'to': current}]
+    if weeks[-1] < current:
+        last_week = _shift_week(current, -1)
+        presets += [
+            {'label': 'Last week', 'from': last_week, 'to': last_week},
+            {'label': 'Last 4 weeks', 'from': _shift_week(current, -3), 'to': current},
+            {'label': 'All time', 'from': weeks[-1], 'to': current},
+        ]
+    cuisines_seen = {c for s in by_servery.values() for c in s['cuisine_dishes']}
+    return {
+        'range': {'from': from_key, 'to': to_key, 'label': _range_label(from_key, to_key), 'weeks': week_count},
+        'current_week': current,
+        'weeks': [{'key': w, 'label': _range_label(w, w)} for w in weeks],
+        'presets': presets,
+        'days_logged': len(days_logged),
+        'days_in_range': 7 * week_count,
+        'serveries': [{'key': k, 'name': k.title()} for k in SERVERIES],
+        'cuisines': [{'key': k, 'name': CUISINE_LABELS[k]} for k in CUISINE_KEYWORDS],
+        'totals': {
+            'dishes': sum(per_day.values()),
+            'unique_dishes': len(dish_counts),
+            'meals': sum(s['meals'] for s in by_servery.values()),
+            'cuisines_seen': len(cuisines_seen),
+        },
+        'by_servery': by_servery,
+        'per_day': [{'day': d, 'dishes': per_day[d]} for d in STATS_DAYS],
+        'top_dishes': [
+            {'name': dish_names[k], 'count': n, 'serveries': sorted(s.title() for s in dish_serveries[k])}
+            for k, n in dish_counts.most_common(10)
+        ],
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Main page"""
-    # Get list of supported cuisines from CUISINE_KEYWORDS
-    # Fix capitalization for special cases
-    cuisine_map = {
-        'indian': 'Indian',
-        'japanese': 'Japanese',
-        'chinese': 'Chinese',
-        'thai': 'Thai',
-        'mexican': 'Mexican',
-        'italian': 'Italian',
-        'mediterranean': 'Mediterranean',
-        'american': 'American',
-        'asian': 'Asian',
-        'french': 'French',
-        'korean': 'Korean',
-        'vietnamese': 'Vietnamese',
-        'greek': 'Greek'
-    }
-    supported_cuisines = sorted([cuisine_map.get(cuisine.lower(), cuisine.title()) for cuisine in CUISINE_KEYWORDS.keys()])
+    supported_cuisines = sorted(CUISINE_LABELS.values())
     # New-style signature (request first) - the old (name, {"request": ...}) form was removed in recent Starlette
-    return templates.TemplateResponse(request, "index.html", {"supported_cuisines": supported_cuisines})
+    return templates.TemplateResponse(request, "index.html", {"supported_cuisines": supported_cuisines, "active_page": "menu"})
+
+
+@app.get("/statistics", response_class=HTMLResponse)
+async def statistics_page(request: Request):
+    return templates.TemplateResponse(request, "stats.html", {"active_page": "statistics"})
+
+
+@app.get("/api/stats")
+async def range_stats(from_week: Optional[str] = Query(None, alias="from"),
+                      to_week: Optional[str] = Query(None, alias="to")):
+    """Stats for ISO weeks from..to (inclusive), e.g. ?from=2026-W40&to=2026-W44. Defaults to this week."""
+    def valid(week_key):
+        return week_key if week_key and WEEK_KEY_RE.match(week_key) and _week_monday(week_key) else None
+    to_key = valid(to_week) or _current_week_key()
+    from_key = valid(from_week) or to_key
+    if from_key > to_key:
+        from_key, to_key = to_key, from_key
+    return JSONResponse(content=compute_stats(from_key, to_key))
+
+
+@app.get("/api/cron/log-menus")
+async def cron_log_menus(request: Request):
+    """Daily Vercel cron: re-download every menu so each day is logged before Rice blanks it."""
+    secret = os.environ.get("CRON_SECRET")
+    if secret and request.headers.get("authorization") != f"Bearer {secret}":
+        return JSONResponse(status_code=401, content={'error': 'unauthorized'})
+    summary = refresh_all_menus()
+    return JSONResponse(content={'week': _current_week_key(), 'serveries': summary})
 
 
 @app.post("/api/refresh")

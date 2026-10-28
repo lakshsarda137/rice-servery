@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{% include "_head.html" %}
+    <title>Statistics · OwlUCanEat</title>
+    <style>
+        .intro { padding: 10px 0 20px; }
+
+        .intro-meta {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .range-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .range-controls[hidden] { display: none; }
+
+        .select-wrap { position: relative; }
+
+        .select-wrap::after {
+            content: '';
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            border-right: 1.5px solid var(--muted);
+            border-bottom: 1.5px solid var(--muted);
+            transform: translateY(-70%) rotate(45deg);
+            pointer-events: none;
+        }
+
+        .select-wrap[hidden] { display: none; }
+
+        .range-select {
+            height: 40px;
+            padding: 0 34px 0 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            font-size: 16px; /* 16px stops iOS zooming in on focus */
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .range-custom {
+            flex-basis: 100%;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .range-custom[hidden] { display: none; }
+        .range-to { color: var(--muted); font-size: 0.85rem; }
+
+        .state {
+            text-align: center;
+            color: var(--muted);
+            padding: 64px 16px;
+        }
+
+        /* Stat tiles */
+        .tiles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .tile { padding: 14px 16px; }
+        .tile-label { font-size: 0.8rem; color: var(--muted); }
+
+        .tile-value {
+            font-size: 1.75rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-top: 2px;
+        }
+
+        /* Chart cards */
+        .chart-card { padding: 18px 16px 16px; margin-bottom: 14px; }
+
+        .chart-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .chart-title { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
+        .chart-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+        .headline {
+            font-size: 0.95rem;
+            line-height: 1.45;
+            color: var(--text-2);
+            margin: 14px 0 16px;
+        }
+
+        .headline b { font-weight: 600; color: var(--text); }
+
+        .pill-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            margin: 14px -16px 0;
+            padding: 0 16px 2px;
+            scrollbar-width: none;
+        }
+
+        .pill-scroll::-webkit-scrollbar { display: none; }
+        .pill-scroll .pill { min-height: 36px; flex-shrink: 0; }
+
+        /* Horizontal bars: one hue, the leader at full strength, the rest a lighter step */
+        .bars { display: flex; flex-direction: column; gap: 4px; }
+
+        .bar-row {
+            display: grid;
+            grid-template-columns: 76px 1fr;
+            align-items: center;
+            gap: 10px;
+            min-height: 32px;
+        }
+
+        .bar-label {
+            font-size: 0.85rem;
+            color: var(--text-2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bar-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            height: 100%;
+            border-left: 1px solid var(--border-strong);
+        }
+
+        .bar {
+            flex-shrink: 0;
+            height: 16px;
+            width: calc((100% - 72px) * var(--p));
+            min-width: 2px;
+            border-radius: 0 4px 4px 0;
+            background: color-mix(in oklab, var(--seq) 40%, var(--surface));
+            transition: width 0.4s ease;
+        }
+
+        .bar.lead { background: var(--seq); }
+
+        .bar-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .bar-value .of { color: var(--muted); font-weight: 400; }
+
+        /* Heatmap */
+        .heat-wrap { margin-top: 16px; }
+
+        .heat {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 3px;
+            table-layout: fixed;
+            margin: 0 -3px;
+        }
+
+        .heat th {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--muted);
+            padding-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .heat thead th:first-child { width: 98px; }
+
+        .heat tbody th {
+            text-align: left;
+            font-size: 0.76rem;
+            color: var(--text-2);
+            padding-right: 4px;
+        }
+
+        .heat td {
+            height: 36px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            background: color-mix(in oklab, var(--seq) calc(var(--t) * 100%), var(--surface-2));
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .heat td.strong { color: #fff; }
+        .heat td.zero { color: var(--muted); font-weight: 400; background: var(--surface-2); }
+        .heat td.active { box-shadow: 0 0 0 2px var(--text); }
+
+        .heat-caption {
+            min-height: 2.6em;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--text-2);
+        }
+
+        .heat-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .heat-legend .ramp {
+            width: 96px;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, var(--surface-2), var(--seq));
+        }
+
+        /* Columns (dishes per day) */
+        .cols {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            height: 170px;
+            border-bottom: 1px solid var(--border-strong);
+            margin-top: 8px;
+        }
+
+        .col {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .col-value {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .col-value.none { color: var(--muted); font-weight: 400; }
+
+        .col-bar {
+            width: min(24px, 70%);
+            height: calc(var(--p) * 130px);
+            border-radius: 4px 4px 0 0;
+            background: color-mix(in oklab, var(--seq) 40%, var(--surface));
+        }
+
+        .col-bar.lead { background: var(--seq); }
+
+        .col-labels {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        /* Most common dishes */
+        .dish-list { list-style: none; margin-top: 8px; }
+
+        .dish-row {
+            display: grid;
+            grid-template-columns: 22px 1fr auto;
+            gap: 4px 10px;
+            align-items: baseline;
+            padding: 10px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .dish-row:first-child { border-top: 0; }
+        .dish-rank { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .dish-name { font-size: 0.95rem; }
+        .dish-where { grid-column: 2; font-size: 0.78rem; color: var(--muted); }
+
+        .dish-count {
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dish-meter {
+            grid-column: 2 / 4;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--surface-2);
+            overflow: hidden;
+        }
+
+        .dish-meter span {
+            display: block;
+            height: 100%;
+            width: calc(var(--p) * 100%);
+            background: var(--seq);
+            border-radius: 2px;
+        }
+
+        .footnote {
+            font-size: 0.8rem;
+            color: var(--muted);
+            line-height: 1.6;
+            padding: 8px 2px 0;
+        }
+
+        @media (min-width: 720px) {
+            .tiles { grid-template-columns: repeat(4, 1fr); }
+            .chart-card { padding: 22px 24px 20px; }
+            .pill-scroll { margin: 14px -24px 0; padding: 0 24px 2px; }
+            .bar-row { grid-template-columns: 96px 1fr; }
+            .intro { padding: 24px 0 28px; }
+        }
+    </style>
+</head>
+<body>
+{% include "_header.html" %}
+
+    <main class="page">
+        <section class="intro">
+            <h1 class="page-title">Statistics</h1>
+            <p class="intro-meta" id="coverage">Loading…</p>
+            <div class="range-controls" id="range-controls" hidden>
+                <span class="select-wrap">
+                    <select class="range-select" id="range-preset" aria-label="Time range"></select>
+                </span>
+                <div class="range-custom" id="range-custom" hidden>
+                    <span class="select-wrap">
+                        <select class="range-select" id="range-from" aria-label="From week"></select>
+                    </span>
+                    <span class="range-to">to</span>
+                    <span class="select-wrap">
+                        <select class="range-select" id="range-to" aria-label="To week"></select>
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <div id="stats"><div class="state">Loading…</div></div>
+    </main>
+
+    <script>
+        const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const DIETARY = ['Vegan', 'Vegetarian', 'Halal'];
+
+        const view = { cuisine: null, cuisineMetric: 'dishes', mixMetric: 'dishes', dietary: 'Vegan', cell: null, custom: false };
+        let data = null;
+
+        function escapeHtml(text) {
+            return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        const fmt = n => n.toLocaleString('en-US');
+        const plural = (n, word) => `${fmt(n)} ${n === 1 ? word : word.replace(/(sh|ch|s)?$/, m => m ? m + 'es' : 's')}`;
+        const titleCase = s => s.charAt(0).toUpperCase() + s.slice(1);
+        // Column headers have ~35px on a phone
+        const shortServery = name => name.replace('South Main', 'S. Main');
+
+        function segmented(name, options, active) {
+            return `<div class="segmented" role="group">${options.map(([value, label]) =>
+                `<button type="button" data-${name}="${value}" class="${value === active ? 'active' : ''}">${label}</button>`
+            ).join('')}</div>`;
+        }
+
+        // rows: [{label, value, display}] -> horizontal bar list, sorted high to low
+        function barList(rows) {
+            const max = Math.max(...rows.map(r => r.value), 0);
+            return `<div class="bars">${rows.map((r, i) => `
+                <div class="bar-row">
+                    <span class="bar-label">${escapeHtml(r.label)}</span>
+                    <div class="bar-area">
+                        <div class="bar ${i === 0 && r.value > 0 ? 'lead' : ''}" style="--p:${max ? r.value / max : 0}"></div>
+                        <span class="bar-value">${r.display}</span>
+                    </div>
+                </div>`).join('')}</div>`;
+        }
+
+        function serveriesBy(valueOf) {
+            return data.serveries
+                .map(s => ({ servery: s, stats: data.by_servery[s.key], value: valueOf(data.by_servery[s.key]) }))
+                .sort((a, b) => b.value - a.value);
+        }
+
+        function cuisineTotal(key) {
+            return data.serveries.reduce((sum, s) => sum + (data.by_servery[s.key].cuisine_dishes[key] || 0), 0);
+        }
+
+        // --- Sections -------------------------------------------------------
+
+        function renderTiles() {
+            const t = data.totals;
+            const tiles = [
+                ['Dishes', fmt(t.dishes)],
+                ['Unique dishes', fmt(t.unique_dishes)],
+                ['Meals', fmt(t.meals)],
+                ['Cuisines', fmt(t.cuisines_seen)],
+            ];
+            return `<div class="tiles">${tiles.map(([label, value]) =>
+                `<div class="card tile"><div class="tile-label">${label}</div><div class="tile-value">${value}</div></div>`
+            ).join('')}</div>`;
+        }
+
+        function renderCuisineCard() {
+            const cuisine = data.cuisines.find(c => c.key === view.cuisine);
+            const byMeals = view.cuisineMetric === 'meals';
+            const ranked = serveriesBy(s => (byMeals ? s.cuisine_meals : s.cuisine_dishes)[cuisine.key] || 0);
+            const [top, second] = ranked;
+
+            let headline;
+            if (!top.value) {
+                headline = `No ${cuisine.name} dishes in this period.`;
+            } else if (second && second.value === top.value) {
+                headline = byMeals
+                    ? `<b>${top.servery.name}</b> and <b>${second.servery.name}</b> tied: ${cuisine.name} food at ${top.value} meals each.`
+                    : `<b>${top.servery.name}</b> and <b>${second.servery.name}</b> tied with ${plural(top.value, `${cuisine.name} dish`)} each.`;
+            } else if (byMeals) {
+                headline = `<b>${top.servery.name}</b> had ${cuisine.name} food at <b>${top.value} of its ${top.stats.meals} meals</b>.`;
+            } else {
+                headline = `<b>${top.servery.name}</b> served the most ${cuisine.name} dishes (<b>${fmt(top.value)}</b>).`;
+            }
+
+            const rows = ranked.map(r => ({
+                label: r.servery.name,
+                value: r.value,
+                display: byMeals ? `${r.value}<span class="of"> / ${r.stats.meals}</span>` : fmt(r.value),
+            }));
+
+            const pills = data.cuisines
+                .map(c => ({ ...c, total: cuisineTotal(c.key) }))
+                .filter(c => c.total > 0 || c.key === view.cuisine)
+                .sort((a, b) => b.total - a.total)
+                .map(c => `<button type="button" class="pill ${c.key === view.cuisine ? 'selected' : ''}" data-cuisine="${c.key}">${escapeHtml(c.name)}</button>`)
+                .join('');
+
+            return `<section class="card chart-card" id="card-cuisine">
+                <div class="chart-head">
+                    <div>
+                        <h2 class="chart-title">Cuisine by servery</h2>
+                        <p class="chart-sub">${byMeals ? `Meals with at least one ${escapeHtml(cuisine.name)} dish` : `Number of ${escapeHtml(cuisine.name)} dishes`}</p>
+                    </div>
+                    ${segmented('cuisine-metric', [['dishes', 'Dishes'], ['meals', 'Meals']], view.cuisineMetric)}
+                </div>
+                <div class="pill-scroll">${pills}</div>
+                <p class="headline">${headline}</p>
+                ${barList(rows)}
+            </section>`;
+        }
+
+        function heatCaption() {
+            if (!view.cell) return 'Tap a number for details.';
+            const s = data.by_servery[view.cell.servery];
+            const c = data.cuisines.find(c => c.key === view.cell.cuisine);
+            const dishes = s.cuisine_dishes[c.key] || 0;
+            const meals = s.cuisine_meals[c.key] || 0;
+            return `<b>${s.name}, ${escapeHtml(c.name)}:</b> ${plural(dishes, 'dish')} over ${meals} of ${s.meals} meals.`;
+        }
+
+        function renderMixCard() {
+            const byMeals = view.mixMetric === 'meals';
+            const valueOf = (s, c) => (byMeals ? data.by_servery[s].cuisine_meals : data.by_servery[s].cuisine_dishes)[c] || 0;
+            const rows = data.cuisines
+                .map(c => ({ ...c, total: cuisineTotal(c.key) }))
+                .filter(c => c.total > 0)
+                .sort((a, b) => b.total - a.total);
+            const max = Math.max(1, ...rows.flatMap(c => data.serveries.map(s => valueOf(s.key, c.key))));
+
+            const head = data.serveries.map(s => `<th scope="col" title="${escapeHtml(s.name)}">${escapeHtml(shortServery(s.name))}</th>`).join('');
+            const body = rows.map(c => `<tr><th scope="row">${escapeHtml(c.name)}</th>${data.serveries.map(s => {
+                const v = valueOf(s.key, c.key);
+                const t = v / max;
+                const active = view.cell && view.cell.servery === s.key && view.cell.cuisine === c.key;
+                const cls = [v ? (t > 0.55 ? 'strong' : '') : 'zero', active ? 'active' : ''].join(' ');
+                return `<td class="${cls}" style="--t:${t.toFixed(3)}" data-servery="${s.key}" data-cuisine="${c.key}">${v || '·'}</td>`;
+            }).join('')}</tr>`).join('');
+
+            return `<section class="card chart-card" id="card-mix">
+                <div class="chart-head">
+                    <div>
+                        <h2 class="chart-title">All cuisines</h2>
+                        <p class="chart-sub">${byMeals ? 'Meals with at least one dish' : 'Dishes'} per cuisine at each servery</p>
+                    </div>
+                    ${segmented('mix-metric', [['dishes', 'Dishes'], ['meals', 'Meals']], view.mixMetric)}
+                </div>
+                <div class="heat-wrap">
+                    <table class="heat"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>
+                </div>
+                <div class="heat-legend"><span>Fewer</span><span class="ramp"></span><span>More</span></div>
+                <p class="heat-caption" id="heat-caption">${heatCaption()}</p>
+            </section>`;
+        }
+
+        function renderDietaryCard() {
+            const tag = view.dietary;
+            const word = tag.toLowerCase();
+            const share = s => s.dishes ? s.dietary[tag] / s.dishes : 0;
+            const ranked = serveriesBy(share);
+            const top = ranked[0];
+            const pct = v => `${Math.round(v * 100)}%`;
+            const headline = top.value
+                ? `<b>${top.servery.name}</b> has the highest share of ${word} dishes (<b>${pct(top.value)}</b>).`
+                : `No dishes were tagged ${word} in this period.`;
+
+            return `<section class="card chart-card" id="card-diet">
+                <h2 class="chart-title">Vegan, vegetarian and halal</h2>
+                <p class="chart-sub">Percent of each servery's dishes with the tag</p>
+                <div class="pill-scroll">${DIETARY.map(d =>
+                    `<button type="button" class="pill ${d === tag ? 'selected' : ''}" data-dietary="${d}">${d}</button>`
+                ).join('')}</div>
+                <p class="headline">${headline}</p>
+                ${barList(ranked.map(r => ({ label: r.servery.name, value: r.value, display: pct(r.value) })))}
+            </section>`;
+        }
+
+        function renderDaysCard() {
+            const multiWeek = data.range.weeks > 1;
+            const max = Math.max(...data.per_day.map(d => d.dishes), 0);
+            const busiest = data.per_day.reduce((a, b) => (b.dishes > a.dishes ? b : a));
+            const missing = data.per_day.some(d => !d.dishes);
+            const dayName = titleCase(busiest.day) + (multiWeek ? 's' : '');
+            const headline = busiest.dishes
+                ? `<b>${dayName}</b> had the most dishes (<b>${fmt(busiest.dishes)}</b>${multiWeek ? ' in total' : ''}).`
+                : 'No days logged yet.';
+
+            const cols = data.per_day.map(d => `
+                <div class="col">
+                    <span class="col-value ${d.dishes ? '' : 'none'}">${d.dishes ? fmt(d.dishes) : '–'}</span>
+                    <div class="col-bar ${d === busiest && d.dishes ? 'lead' : ''}" style="--p:${max ? d.dishes / max : 0}"></div>
+                </div>`).join('');
+
+            return `<section class="card chart-card">
+                <h2 class="chart-title">Dishes by day</h2>
+                <p class="chart-sub">All serveries combined${multiWeek ? ', added up by weekday' : ''}${missing ? '. – means no data' : ''}</p>
+                <p class="headline">${headline}</p>
+                <div class="cols">${cols}</div>
+                <div class="col-labels">${DAYS.map(d => `<span>${titleCase(d).slice(0, 3)}</span>`).join('')}</div>
+            </section>`;
+        }
+
+        function renderRepeatsCard() {
+            const dishes = data.top_dishes;
+            if (!dishes.length) return '';
+            const max = dishes[0].count;
+            return `<section class="card chart-card">
+                <h2 class="chart-title">Most common dishes</h2>
+                <p class="chart-sub">Times each dish was on a menu</p>
+                <ol class="dish-list">${dishes.map((d, i) => `
+                    <li class="dish-row">
+                        <span class="dish-rank">${i + 1}</span>
+                        <span class="dish-name">${escapeHtml(d.name)}</span>
+                        <span class="dish-count">${fmt(d.count)}</span>
+                        <span class="dish-where">${escapeHtml(d.serveries.join(', '))}</span>
+                        <span class="dish-meter"><span style="--p:${d.count / max}"></span></span>
+                    </li>`).join('')}</ol>
+            </section>`;
+        }
+
+        function render() {
+            const root = document.getElementById('stats');
+            if (!data.totals.dishes) {
+                root.innerHTML = `<div class="state">No menus logged for this period yet.</div>`;
+                return;
+            }
+            root.innerHTML = renderTiles() + renderCuisineCard() + renderMixCard() + renderDietaryCard()
+                + renderDaysCard() + renderRepeatsCard()
+                + `<p class="footnote">How we count: each line on a menu at each meal is one dish, so a dish served
+                   at lunch and dinner counts twice. Cuisines are guessed from dish names, and one dish can count for
+                   more than one cuisine. Menus come from dining.rice.edu.</p>`;
+        }
+
+        // Re-render one card in place so the page doesn't jump
+        function rerender(id, html) {
+            const card = document.getElementById(id);
+            if (card) card.outerHTML = html;
+        }
+
+        document.getElementById('stats').addEventListener('click', e => {
+            const el = e.target.closest('[data-cuisine], [data-cuisine-metric], [data-mix-metric], [data-dietary]');
+            if (!el) return;
+            if (el.tagName === 'TD') {
+                view.cell = { servery: el.dataset.servery, cuisine: el.dataset.cuisine };
+                document.querySelectorAll('.heat td.active').forEach(td => td.classList.remove('active'));
+                el.classList.add('active');
+                document.getElementById('heat-caption').innerHTML = heatCaption();
+            } else if (el.dataset.cuisine) {
+                view.cuisine = el.dataset.cuisine;
+                rerender('card-cuisine', renderCuisineCard());
+            } else if (el.dataset.cuisineMetric) {
+                view.cuisineMetric = el.dataset.cuisineMetric;
+                rerender('card-cuisine', renderCuisineCard());
+            } else if (el.dataset.mixMetric) {
+                view.mixMetric = el.dataset.mixMetric;
+                rerender('card-mix', renderMixCard());
+            } else if (el.dataset.dietary) {
+                view.dietary = el.dataset.dietary;
+                rerender('card-diet', renderDietaryCard());
+            }
+        });
+
+        // --- Time range -----------------------------------------------------
+
+        const presetSelect = document.getElementById('range-preset');
+        const fromSelect = document.getElementById('range-from');
+        const toSelect = document.getElementById('range-to');
+
+        function renderRangeControls() {
+            const { range, presets, weeks } = data;
+            document.getElementById('range-controls').hidden = weeks.length < 2;
+
+            const matching = presets.findIndex(p => p.from === range.from && p.to === range.to);
+            const custom = view.custom || matching < 0;
+            presetSelect.innerHTML = presets.map((p, i) =>
+                `<option value="${i}" ${!custom && i === matching ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+            ).join('') + `<option value="custom" ${custom ? 'selected' : ''}>Custom range</option>`;
+
+            const ascending = [...weeks].reverse();
+            const options = selected => ascending.map(w =>
+                `<option value="${w.key}" ${w.key === selected ? 'selected' : ''}>${escapeHtml(w.label)}</option>`).join('');
+            fromSelect.innerHTML = options(range.from);
+            toSelect.innerHTML = options(range.to);
+            document.getElementById('range-custom').hidden = !custom;
+        }
+
+        presetSelect.addEventListener('change', () => {
+            view.custom = presetSelect.value === 'custom';
+            if (view.custom) {
+                renderRangeControls();
+                return;
+            }
+            const preset = data.presets[Number(presetSelect.value)];
+            load(preset.from, preset.to);
+        });
+
+        [fromSelect, toSelect].forEach(select => select.addEventListener('change', () => load(fromSelect.value, toSelect.value)));
+
+        async function load(from, to) {
+            const root = document.getElementById('stats');
+            root.innerHTML = `<div class="state">Loading…</div>`;
+            const params = new URLSearchParams();
+            if (from) params.set('from', from);
+            if (to) params.set('to', to);
+            try {
+                const response = await fetch('/api/stats?' + params);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                data = await response.json();
+            } catch (error) {
+                root.innerHTML = `<div class="state">Couldn't load statistics (${escapeHtml(error.message)}).</div>`;
+                return;
+            }
+
+            // Start on the cuisine with the most dishes
+            if (!view.cuisine || !cuisineTotal(view.cuisine)) {
+                view.cuisine = data.cuisines
+                    .map(c => ({ key: c.key, total: cuisineTotal(c.key) }))
+                    .sort((a, b) => b.total - a.total)[0].key;
+            }
+            view.cell = null;
+
+            document.getElementById('coverage').textContent =
+                `${data.range.label} · ${data.days_logged} of ${data.days_in_range} days logged`;
+            renderRangeControls();
+            render();
+        }
+
+        load();
+    </script>
+</body>
+</html>

@@ -12,8 +12,13 @@
       "dest": "servery_finder_web.py"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/cron/log-menus",
+      "schedule": "0 13 * * *"
+    }
+  ],
   "env": {
     "ENV": "production"
   }
 }
-

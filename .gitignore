@@ -1,3 +1,6 @@
+# Secrets
+.env
+
 # Python
 __pycache__/
 *.py[cod]
@@ -28,3 +31,6 @@ Thumbs.db
 *.log
 chromedriver.log
 
+
+# Local menu log (Statistics page)
+menu_log/
